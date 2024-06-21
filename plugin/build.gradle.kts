@@ -21,6 +21,12 @@ gradlePlugin {
     }
 }
 
+dependencies {
+    implementation(libs.xmlpull)
+    implementation(libs.guava)
+    implementation(libs.kotlinpoet)
+}
+
 kotlin {
     jvmToolchain(17)
 }
