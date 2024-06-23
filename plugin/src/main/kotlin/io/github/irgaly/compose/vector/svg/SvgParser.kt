@@ -22,6 +22,23 @@ class SvgParser {
             throw error
         }
         val nodes = mutableListOf<ImageVector.Node>()
+        nodes.add(
+            ImageVector.Group(
+                "group",
+                0f,
+                0f,
+                0f,
+                0f,
+                0f,
+                0f,
+                0f,
+                listOf(
+                    ImageVector.PathNode.HorizontalTo(10f),
+                    ImageVector.PathNode.VerticalTo(99f)
+                ),
+                emptyList()
+            )
+        )
         val imageVector = ImageVector(
             name = "IconName",
             defaultWidth = 100.0,
