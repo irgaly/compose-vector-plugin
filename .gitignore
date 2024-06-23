@@ -1,4 +1,8 @@
 .idea/kotlinc.xml
+.idea/deploymentTargetSelector.xml
+.idea/detekt.xml
+.idea/migrations.xml
+.idea/other.xml
 
 # Kotlin
 .kotlin
