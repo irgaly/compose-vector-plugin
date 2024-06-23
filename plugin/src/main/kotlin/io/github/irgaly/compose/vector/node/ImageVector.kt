@@ -16,50 +16,58 @@ data class ImageVector(
     val viewportWidth: Float,
     val viewportHeight: Float,
     val autoMirror: Boolean,
-    val nodes: List<Node>
+    val nodes: List<VectorNode>,
 ) {
-    interface Node
-    data class Group(
-        val name: String,
-        val rotate: Float,
-        val pivotX: Float,
-        val pivotY: Float,
-        val scaleX: Float,
-        val scaleY: Float,
-        val translationX: Float,
-        val translationY: Float,
-        val clipPathData: List<PathNode>,
-        val nodes: List<Node>,
-    ): Node
-    data class Path(
-        val pathData: List<PathNode>,
-        val pathFillType: PathFillType,
-        val name: String,
-        val fill: Brush,
-        val fillAlpha: Float,
-        val stroke: Brush,
-        val strokeAlpha: Float,
-        val strokeLineWidth: Float,
-        val strokeLineCap: StrokeCap,
-        val strokeLineJoin: StrokeJoin,
-        val strokeLineMiter: Float,
-        val trimPathStart: Float,
-        val trimPathEnd: Float,
-        val trimPathOffset: Float,
-    ) : Node
+    sealed interface VectorNode {
+        data class VectorGroup(
+            val name: String?,
+            val rotate: Float?,
+            val pivotX: Float?,
+            val pivotY: Float?,
+            val scaleX: Float?,
+            val scaleY: Float?,
+            val translationX: Float?,
+            val translationY: Float?,
+            val clipPathData: List<PathNode>,
+            val nodes: List<VectorNode>,
+        ) : VectorNode
+
+        data class VectorPath(
+            val pathData: List<PathNode>,
+            val pathFillType: PathFillType?,
+            val name: String?,
+            val fill: Brush?,
+            val fillAlpha: Float?,
+            val stroke: Brush?,
+            val strokeAlpha: Float?,
+            val strokeLineWidth: Float?,
+            val strokeLineCap: StrokeCap?,
+            val strokeLineJoin: StrokeJoin?,
+            val strokeLineMiter: Float?,
+            val trimPathStart: Float?,
+            val trimPathEnd: Float?,
+            val trimPathOffset: Float?,
+        ) : VectorNode
+    }
+
     enum class PathFillType {
         EvenOdd, NonZero
     }
-    interface Brush
-    data class SolidColor(
-        val color: Color
-    ): Brush
+
+    sealed interface Brush {
+        data class SolidColor(
+            val color: Color,
+        ) : Brush
+    }
+
     enum class StrokeCap {
         Butt, Round, Square
     }
+
     enum class StrokeJoin {
-        Beve1, Miter, Round
+        Bevel, Miter, Round
     }
+
     data class Color(val hex: String)
     sealed interface PathNode {
         data class ArcTo(
@@ -72,7 +80,7 @@ data class ImageVector(
             val arcStartY: Float,
         ) : PathNode
 
-        object Close : PathNode
+        data object Close : PathNode
         data class CurveTo(
             val x1: Float,
             val y1: Float,

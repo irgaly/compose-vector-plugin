@@ -21,10 +21,10 @@ class SvgParser {
         } catch (error: IOException) {
             throw error
         }
-        val nodes = mutableListOf<ImageVector.Node>()
+        val nodes = mutableListOf<ImageVector.VectorNode>()
         nodes.add(
-            ImageVector.Group(
-                "group",
+            ImageVector.VectorNode.VectorGroup(
+                "group1",
                 0f,
                 0f,
                 0f,
@@ -36,7 +36,63 @@ class SvgParser {
                     ImageVector.PathNode.HorizontalTo(10f),
                     ImageVector.PathNode.VerticalTo(99f)
                 ),
-                emptyList()
+                listOf(
+                    ImageVector.VectorNode.VectorGroup(
+                        "group2",
+                        0f,
+                        0f,
+                        0f,
+                        0f,
+                        0f,
+                        0f,
+                        0f,
+                        listOf(
+                            ImageVector.PathNode.HorizontalTo(10f),
+                            ImageVector.PathNode.VerticalTo(99f)
+                        ),
+                        emptyList()
+                    ),
+                    ImageVector.VectorNode.VectorPath(
+                        listOf(
+                            ImageVector.PathNode.HorizontalTo(10f),
+                            ImageVector.PathNode.VerticalTo(99f)
+                        ),
+                        ImageVector.PathFillType.EvenOdd,
+                        "path1",
+                        ImageVector.Brush.SolidColor(ImageVector.Color("0xFF000000")),
+                        1f,
+                        ImageVector.Brush.SolidColor(ImageVector.Color("0xFF000000")),
+                        1f,
+                        1f,
+                        ImageVector.StrokeCap.Round,
+                        ImageVector.StrokeJoin.Round,
+                        1f,
+                        0f,
+                        0f,
+                        0f
+                    )
+                )
+            )
+        )
+        nodes.add(
+            ImageVector.VectorNode.VectorPath(
+                listOf(
+                    ImageVector.PathNode.HorizontalTo(10f),
+                    ImageVector.PathNode.VerticalTo(99f)
+                ),
+                ImageVector.PathFillType.EvenOdd,
+                "path2",
+                ImageVector.Brush.SolidColor(ImageVector.Color("0xFF000000")),
+                1f,
+                ImageVector.Brush.SolidColor(ImageVector.Color("0xFF000000")),
+                1f,
+                1f,
+                ImageVector.StrokeCap.Round,
+                ImageVector.StrokeJoin.Round,
+                1f,
+                0f,
+                0f,
+                0f
             )
         )
         val imageVector = ImageVector(
