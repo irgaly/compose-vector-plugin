@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.xmlpull)
     implementation(libs.guava)
     implementation(libs.kotlinpoet)
+    implementation(libs.batik)
 }
 
 kotlin {
