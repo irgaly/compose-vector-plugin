@@ -6,12 +6,10 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.buildCodeBlock
 import io.github.irgaly.compose.icons.xml.setIndent
 import io.github.irgaly.compose.vector.node.ImageVector
-import java.lang.reflect.Member
 
 /**
  * ImageVector to Kotlin Implementation
@@ -71,10 +69,10 @@ class ImageVectorGenerator {
                                 imageVector.viewportHeight,
                             )
                             indent()
+                            // TODO: use タグを fun で再現する
                             imageVector.nodes.recursiveForEach(
                                 onGroupBegin = { node ->
-                                    add("%M(", MemberNames.Vector.Group)
-                                    buildList<CodeBlock.Builder.() -> Unit> {
+                                    val groupArguments = buildList<CodeBlock.Builder.() -> Unit> {
                                         if (node.name != null) {
                                             add { add("name = %S", node.name) }
                                         }
@@ -111,13 +109,19 @@ class ImageVectorGenerator {
                                                 add("}")
                                             }
                                         }
-                                    }.forEachIndexed { index, block ->
-                                        if (0 < index) {
-                                            add(", ")
-                                        }
-                                        block()
                                     }
-                                    beginControlFlow(")")
+                                    if (groupArguments.isNotEmpty()) {
+                                        add("%M(", MemberNames.Vector.Group)
+                                        groupArguments.forEachIndexed { index, block ->
+                                            if (0 < index) {
+                                                add(", ")
+                                            }
+                                            block()
+                                        }
+                                        beginControlFlow(")")
+                                    } else {
+                                        beginControlFlow("%M", MemberNames.Vector.Group)
+                                    }
                                 },
                                 onGroupEnd = { _ ->
                                     endControlFlow()
@@ -238,7 +242,9 @@ class ImageVectorGenerator {
                 is ImageVector.VectorNode.VectorGroup -> {
                     onGroupBegin(node)
                     node.nodes.recursiveForEach(
-                        onGroupBegin, onGroupEnd, onPath
+                        onGroupBegin = onGroupBegin,
+                        onGroupEnd = onGroupEnd,
+                        onPath = onPath
                     )
                     onGroupEnd(node)
                 }

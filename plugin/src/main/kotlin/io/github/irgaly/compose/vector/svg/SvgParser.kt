@@ -5,6 +5,10 @@ import org.apache.batik.anim.dom.SAXSVGDocumentFactory
 import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
 import org.apache.batik.anim.dom.SVGOMDocument
+import org.apache.batik.anim.dom.SVGOMElement
+import org.apache.batik.anim.dom.SVGOMGElement
+import org.apache.batik.anim.dom.SVGOMPathElement
+import org.apache.batik.anim.dom.SVGOMSVGElement
 import org.apache.batik.util.XMLResourceDescriptor
 import java.io.IOException
 import java.io.InputStream
@@ -18,24 +22,24 @@ class SvgParser {
      * @throws IllegalStateException parse error
      */
     fun parse(input: InputStream): ImageVector {
-        val doc = try {
+        val document = try {
             SAXSVGDocumentFactory(
                 XMLResourceDescriptor.getXMLParserClassName()
             ).createDocument("xml", input) as SVGOMDocument
         } catch (error: IOException) {
             throw error
         }
-        val root = doc.rootElement
-        val viewBox = (root.viewBox as SVGOMAnimatedRect)
-        val viewBoxX = if (viewBox.isSpecified) root.viewBox.baseVal.x else 0f
-        val viewBoxY = if (viewBox.isSpecified) root.viewBox.baseVal.y else 0f
-        var viewBoxWidth = if (viewBox.isSpecified) root.viewBox.baseVal.width else null
-        var viewBoxHeight = if (viewBox.isSpecified) root.viewBox.baseVal.height else null
-        val width = if ((root.width as SVGOMAnimatedLength).isSpecified) {
-            root.width.baseVal.valueInSpecifiedUnits
+        val svg = (document.rootElement as SVGOMSVGElement)
+        val viewBox = (svg.viewBox as SVGOMAnimatedRect)
+        val viewBoxX = if (viewBox.isSpecified) svg.viewBox.baseVal.x else 0f
+        val viewBoxY = if (viewBox.isSpecified) svg.viewBox.baseVal.y else 0f
+        var viewBoxWidth = if (viewBox.isSpecified) svg.viewBox.baseVal.width else null
+        var viewBoxHeight = if (viewBox.isSpecified) svg.viewBox.baseVal.height else null
+        val width = if ((svg.width as SVGOMAnimatedLength).isSpecified) {
+            svg.width.baseVal.valueInSpecifiedUnits
         } else viewBoxWidth ?: error("svg tag has no width")
-        val height = if ((root.height as SVGOMAnimatedLength).isSpecified) {
-            root.height.baseVal.valueInSpecifiedUnits
+        val height = if ((svg.height as SVGOMAnimatedLength).isSpecified) {
+            svg.height.baseVal.valueInSpecifiedUnits
         } else viewBoxHeight ?: error("svg tag has no width")
         if (viewBoxWidth == null) {
             viewBoxWidth = width
@@ -47,6 +51,27 @@ class SvgParser {
         // TODO: useタグに対応する
         // * id付きのタグをfunで定義して使い回す
         var rootNodes = mutableListOf<ImageVector.VectorNode>()
+        val currentNodesStack = mutableListOf(rootNodes)
+        svg.traverse(
+            onGroupBegin = { _ ->
+                currentNodesStack.add(mutableListOf())
+            },
+            onGroupEnd = { element ->
+                val childNodes = currentNodesStack.removeLast()
+                val currentNodes = currentNodesStack.last()
+                currentNodes.add(
+                    ImageVector.VectorNode.VectorGroup(
+                        childNodes,
+                        name = element.xmlId.ifEmpty { null },
+                        // TODO: implement other g feature
+                    )
+                )
+            },
+            onOtherNode = {
+                val currentNodes = currentNodesStack.last()
+                // other node
+            }
+        )
         rootNodes.add(
             ImageVector.VectorNode.VectorGroup(
                 listOf(
@@ -141,5 +166,27 @@ class SvgParser {
             nodes = rootNodes.toList()
         )
         return imageVector
+    }
+
+    private fun SVGOMElement.traverse(
+        onGroupBegin: (element: SVGOMGElement) -> Unit,
+        onGroupEnd: (element: SVGOMGElement) -> Unit,
+        onOtherNode: () -> Unit,
+    ) {
+        var child = (this.firstElementChild as? SVGOMElement)
+        while (child != null) {
+            when (child) {
+                is SVGOMGElement -> {
+                    onGroupBegin(child)
+                    child.traverse(onGroupBegin, onGroupEnd, onOtherNode)
+                    onGroupEnd(child)
+                }
+                is SVGOMPathElement -> {
+                    onOtherNode()
+                }
+                else -> {}
+            }
+            child = (child.nextElementSibling as? SVGOMElement)
+        }
     }
 }
