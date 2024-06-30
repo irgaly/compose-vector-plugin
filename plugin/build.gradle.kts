@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.guava)
     implementation(libs.kotlinpoet)
     implementation(libs.batik)
+    implementation(libs.cssParser)
 }
 
 kotlin {

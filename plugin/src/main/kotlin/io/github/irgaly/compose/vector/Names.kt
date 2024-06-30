@@ -20,6 +20,7 @@ internal object ClassNames {
     val Brush = ClassName(PackageNames.Graphics, "Brush")
     val StrokeCap = ClassName(PackageNames.Graphics, "StrokeCap")
     val StrokeJoin = ClassName(PackageNames.Graphics, "StrokeJoin")
+    val Color = ClassName(PackageNames.Graphics, "Color")
 }
 
 internal object MemberNames {

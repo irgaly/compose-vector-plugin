@@ -122,6 +122,50 @@ class ImageVectorGenerator {
                                     } else {
                                         beginControlFlow("%M", MemberNames.Vector.Group)
                                     }
+                                    if (node.extra != null) {
+                                        if (node.extra.fill != null) {
+                                            add("val fill${node.extra.id} = ")
+                                            add(node.extra.fill.toCodeBlock())
+                                            add("\n")
+                                        }
+                                        if (node.extra.fillAlpha != null) {
+                                            addStatement(
+                                                "val fillAlpha${node.extra.id} = %Lf",
+                                                node.extra.fillAlpha
+                                            )
+                                        }
+                                        if (node.extra.stroke != null) {
+                                            add("val stroke${node.extra.id} = ")
+                                            add(node.extra.stroke.toCodeBlock())
+                                            add("\n")
+                                        }
+                                        if (node.extra.strokeAlpha != null) {
+                                            addStatement(
+                                                "val strokeAlpha${node.extra.id} = %Lf",
+                                                node.extra.strokeAlpha
+                                            )
+                                        }
+                                        if (node.extra.strokeLineWidth != null) {
+                                            addStatement(
+                                                "val strokeLineWidth${node.extra.id} = %Lf",
+                                                node.extra.strokeLineWidth
+                                            )
+                                        }
+                                        if (node.extra.strokeLineCap != null) {
+                                            addStatement(
+                                                "val strokeLineCap${node.extra.id} = %M.%L",
+                                                MemberNames.StrokeCap,
+                                                node.extra.strokeLineCap.name
+                                            )
+                                        }
+                                        if (node.extra.strokeLineJoin != null) {
+                                            addStatement(
+                                                "val strokeLineJoin${node.extra.id} = %M.%L",
+                                                MemberNames.StrokeJoin,
+                                                node.extra.strokeLineJoin.name
+                                            )
+                                        }
+                                    }
                                 },
                                 onGroupEnd = { _ ->
                                     endControlFlow()
@@ -231,286 +275,303 @@ class ImageVectorGenerator {
         builder.addFunction(preview2FunSpec.build())
         return builder.setIndent().build().toString()
     }
+}
 
-    private fun List<ImageVector.VectorNode>.recursiveForEach(
-        onGroupBegin: (node: ImageVector.VectorNode.VectorGroup) -> Unit,
-        onGroupEnd: (node: ImageVector.VectorNode.VectorGroup) -> Unit,
-        onPath: (node: ImageVector.VectorNode.VectorPath) -> Unit,
-    ) {
-        forEach { node ->
-            when (node) {
-                is ImageVector.VectorNode.VectorGroup -> {
-                    onGroupBegin(node)
-                    node.nodes.recursiveForEach(
-                        onGroupBegin = onGroupBegin,
-                        onGroupEnd = onGroupEnd,
-                        onPath = onPath
-                    )
-                    onGroupEnd(node)
-                }
+private fun List<ImageVector.VectorNode>.recursiveForEach(
+    onGroupBegin: (node: ImageVector.VectorNode.VectorGroup) -> Unit,
+    onGroupEnd: (node: ImageVector.VectorNode.VectorGroup) -> Unit,
+    onPath: (node: ImageVector.VectorNode.VectorPath) -> Unit,
+) {
+    forEach { node ->
+        when (node) {
+            is ImageVector.VectorNode.VectorGroup -> {
+                onGroupBegin(node)
+                node.nodes.recursiveForEach(
+                    onGroupBegin = onGroupBegin,
+                    onGroupEnd = onGroupEnd,
+                    onPath = onPath
+                )
+                onGroupEnd(node)
+            }
 
-                is ImageVector.VectorNode.VectorPath -> onPath(node)
+            is ImageVector.VectorNode.VectorPath -> onPath(node)
+        }
+    }
+}
+
+private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
+    return buildCodeBlock {
+        when (this@toCodeBlock) {
+            is ImageVector.PathNode.ArcTo -> {
+                add(
+                    "arcTo(" +
+                            /* horizontalEllipseRadius = */ "%Lf, " +
+                            /* verticalEllipseRadius = */ "%Lf, " +
+                            /* theta = */ "%Lf, " +
+                            /* isMoreThanHalf = */ "%Lf, " +
+                            /* isPositiveArc = */ "%Lf, " +
+                            /* x1 = */ "%Lf, " +
+                            /* y1 = */ "%Lf" +
+                            ")",
+                    horizontalEllipseRadius,
+                    verticalEllipseRadius,
+                    theta,
+                    isMoreThanHalf,
+                    isPositiveArc,
+                    arcStartX,
+                    arcStartY
+                )
+            }
+
+            ImageVector.PathNode.Close -> {
+                add("close()")
+            }
+
+            is ImageVector.PathNode.CurveTo -> {
+                add(
+                    "curveTo(" +
+                            /* x1 = */ "%Lf, " +
+                            /* y1 = */ "%Lf, " +
+                            /* x2 = */ "%Lf, " +
+                            /* y2 = */ "%Lf, " +
+                            /* x3 = */ "%Lf, " +
+                            /* y3 = */ "%Lf" +
+                            ")",
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                    x3,
+                    y3
+                )
+            }
+
+            is ImageVector.PathNode.HorizontalTo -> {
+                add(
+                    "horizontalLineTo(" +
+                            /* x = */ "%Lf" +
+                            ")",
+                    x
+                )
+            }
+
+            is ImageVector.PathNode.LineTo -> {
+                add(
+                    "lineTo(" +
+                            /* x = */ "%Lf, " +
+                            /* y = */ "%Lf" +
+                            ")",
+                    x,
+                    y
+                )
+            }
+
+            is ImageVector.PathNode.MoveTo -> {
+                add(
+                    "moveTo(" +
+                            /* x = */ "%Lf, " +
+                            /* y = */ "%Lf" +
+                            ")",
+                    x,
+                    y
+                )
+            }
+
+            is ImageVector.PathNode.QuadTo -> {
+                add(
+                    "quadTo(" +
+                            /* x1 = */ "%Lf, " +
+                            /* y1 = */ "%Lf, " +
+                            /* x2 = */ "%Lf, " +
+                            /* y2 = */ "%Lf" +
+                            ")",
+                    x1,
+                    y1,
+                    x2,
+                    y2
+                )
+            }
+
+            is ImageVector.PathNode.ReflectiveCurveTo -> {
+                add(
+                    "reflectiveCurveTo(" +
+                            /* x1 = */ "%Lf, " +
+                            /* y1 = */ "%Lf, " +
+                            /* x2 = */ "%Lf, " +
+                            /* y2 = */ "%Lf" +
+                            ")",
+                    x1,
+                    y1,
+                    x2,
+                    y2
+                )
+            }
+
+            is ImageVector.PathNode.ReflectiveQuadTo -> {
+                add(
+                    "reflectiveQuadTo(" +
+                            /* x = */ "%Lf, " +
+                            /* y = */ "%Lf" +
+                            ")",
+                    x,
+                    y
+                )
+            }
+
+            is ImageVector.PathNode.RelativeArcTo -> {
+                add(
+                    "arcToRelative(" +
+                            /* a = */ "%Lf, " +
+                            /* b = */ "%Lf, " +
+                            /* theta = */ "%Lf, " +
+                            /* isMoreThanHalf = */ "%Lf, " +
+                            /* isPositiveArc = */ "%Lf, " +
+                            /* dx1 = */ "%Lf, " +
+                            /* dy1 = */ "%Lf" +
+                            ")",
+                    horizontalEllipseRadius,
+                    verticalEllipseRadius,
+                    theta,
+                    isMoreThanHalf,
+                    isPositiveArc,
+                    arcStartDx,
+                    arcStartDy
+                )
+            }
+
+            is ImageVector.PathNode.RelativeCurveTo -> {
+                add(
+                    "curveToRelative(" +
+                            /* dx1 = */ "%Lf, " +
+                            /* dy1 = */ "%Lf, " +
+                            /* dx2 = */ "%Lf, " +
+                            /* dy2 = */ "%Lf, " +
+                            /* dx3 = */ "%Lf, " +
+                            /* dy3 = */ "%Lf" +
+                            ")",
+                    dx1,
+                    dy1,
+                    dx2,
+                    dy2,
+                    dx3,
+                    dy3
+                )
+            }
+
+            is ImageVector.PathNode.RelativeHorizontalTo -> {
+                add(
+                    "horizontalLineToRelative(" +
+                            /* dx = */ "%Lf" +
+                            ")",
+                    dx
+                )
+            }
+
+            is ImageVector.PathNode.RelativeLineTo -> {
+                add(
+                    "lineToRelative(" +
+                            /* dx = */ "%Lf, " +
+                            /* dy = */ "%Lf" +
+                            ")",
+                    dx,
+                    dy
+                )
+            }
+
+            is ImageVector.PathNode.RelativeMoveTo -> {
+                add(
+                    "moveToRelative(" +
+                            /* dx = */ "%Lf, " +
+                            /* dy= */ "%Lf" +
+                            ")",
+                    dx,
+                    dy
+                )
+            }
+
+            is ImageVector.PathNode.RelativeQuadTo -> {
+                add(
+                    "quadToRelative(" +
+                            /* dx1 = */ "%Lf, " +
+                            /* dy1 = */ "%Lf, " +
+                            /* dx2 = */ "%Lf, " +
+                            /* dy2 = */ "%Lf" +
+                            ")",
+                    dx1,
+                    dy1,
+                    dx2,
+                    dy2
+                )
+            }
+
+            is ImageVector.PathNode.RelativeReflectiveCurveTo -> {
+                add(
+                    "reflectiveCurveToRelative(" +
+                            /* dx1 = */ "%Lf, " +
+                            /* dy1 = */ "%Lf, " +
+                            /* dx2 = */ "%Lf, " +
+                            /* dy2 = */ "%Lf" +
+                            ")",
+                    dx1,
+                    dy1,
+                    dx2,
+                    dy2
+                )
+            }
+
+            is ImageVector.PathNode.RelativeReflectiveQuadTo -> {
+                add(
+                    "reflectiveQuadToRelative(" +
+                            /* dx = */ "%Lf, " +
+                            /* dy = */ "%Lf" +
+                            ")",
+                    dx,
+                    dy
+                )
+            }
+
+            is ImageVector.PathNode.RelativeVerticalTo -> {
+                add(
+                    "verticalLineToRelative(" +
+                            /* dy = */ "%Lf" +
+                            ")",
+                    dy
+                )
+            }
+
+            is ImageVector.PathNode.VerticalTo -> {
+                add(
+                    "verticalLineTo(" +
+                            /* y = */ "%Lf" +
+                            ")",
+                    y
+                )
             }
         }
     }
+}
 
-    private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
-        return buildCodeBlock {
-            when (this@toCodeBlock) {
-                is ImageVector.PathNode.ArcTo -> {
-                    add(
-                        "arcTo(" +
-                                /* horizontalEllipseRadius = */ "%Lf, " +
-                                /* verticalEllipseRadius = */ "%Lf, " +
-                                /* theta = */ "%Lf, " +
-                                /* isMoreThanHalf = */ "%Lf, " +
-                                /* isPositiveArc = */ "%Lf, " +
-                                /* x1 = */ "%Lf, " +
-                                /* y1 = */ "%Lf" +
-                                ")",
-                        horizontalEllipseRadius,
-                        verticalEllipseRadius,
-                        theta,
-                        isMoreThanHalf,
-                        isPositiveArc,
-                        arcStartX,
-                        arcStartY
-                    )
-                }
+fun ImageVector.Brush.toCodeBlock(): CodeBlock {
+    return buildCodeBlock {
+        when (this@toCodeBlock) {
+            is ImageVector.Brush.SolidColor -> {
+                when (color) {
+                    is ImageVector.Transparent -> {
+                        add(
+                            "%M(%M.Transparent)",
+                            MemberNames.SolidColor,
+                            MemberNames.Color
+                        )
+                    }
 
-                ImageVector.PathNode.Close -> {
-                    add("close()")
-                }
-
-                is ImageVector.PathNode.CurveTo -> {
-                    add(
-                        "curveTo(" +
-                                /* x1 = */ "%Lf, " +
-                                /* y1 = */ "%Lf, " +
-                                /* x2 = */ "%Lf, " +
-                                /* y2 = */ "%Lf, " +
-                                /* x3 = */ "%Lf, " +
-                                /* y3 = */ "%Lf" +
-                                ")",
-                        x1,
-                        y1,
-                        x2,
-                        y2,
-                        x3,
-                        y3
-                    )
-                }
-
-                is ImageVector.PathNode.HorizontalTo -> {
-                    add(
-                        "horizontalLineTo(" +
-                                /* x = */ "%Lf" +
-                                ")",
-                        x
-                    )
-                }
-
-                is ImageVector.PathNode.LineTo -> {
-                    add(
-                        "lineTo(" +
-                                /* x = */ "%Lf, " +
-                                /* y = */ "%Lf" +
-                                ")",
-                        x,
-                        y
-                    )
-                }
-
-                is ImageVector.PathNode.MoveTo -> {
-                    add(
-                        "moveTo(" +
-                                /* x = */ "%Lf, " +
-                                /* y = */ "%Lf" +
-                                ")",
-                        x,
-                        y
-                    )
-                }
-
-                is ImageVector.PathNode.QuadTo -> {
-                    add(
-                        "quadTo(" +
-                                /* x1 = */ "%Lf, " +
-                                /* y1 = */ "%Lf, " +
-                                /* x2 = */ "%Lf, " +
-                                /* y2 = */ "%Lf" +
-                                ")",
-                        x1,
-                        y1,
-                        x2,
-                        y2
-                    )
-                }
-
-                is ImageVector.PathNode.ReflectiveCurveTo -> {
-                    add(
-                        "reflectiveCurveTo(" +
-                                /* x1 = */ "%Lf, " +
-                                /* y1 = */ "%Lf, " +
-                                /* x2 = */ "%Lf, " +
-                                /* y2 = */ "%Lf" +
-                                ")",
-                        x1,
-                        y1,
-                        x2,
-                        y2
-                    )
-                }
-
-                is ImageVector.PathNode.ReflectiveQuadTo -> {
-                    add(
-                        "reflectiveQuadTo(" +
-                                /* x = */ "%Lf, " +
-                                /* y = */ "%Lf" +
-                                ")",
-                        x,
-                        y
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeArcTo -> {
-                    add(
-                        "arcToRelative(" +
-                                /* a = */ "%Lf, " +
-                                /* b = */ "%Lf, " +
-                                /* theta = */ "%Lf, " +
-                                /* isMoreThanHalf = */ "%Lf, " +
-                                /* isPositiveArc = */ "%Lf, " +
-                                /* dx1 = */ "%Lf, " +
-                                /* dy1 = */ "%Lf" +
-                                ")",
-                        horizontalEllipseRadius,
-                        verticalEllipseRadius,
-                        theta,
-                        isMoreThanHalf,
-                        isPositiveArc,
-                        arcStartDx,
-                        arcStartDy
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeCurveTo -> {
-                    add(
-                        "curveToRelative(" +
-                                /* dx1 = */ "%Lf, " +
-                                /* dy1 = */ "%Lf, " +
-                                /* dx2 = */ "%Lf, " +
-                                /* dy2 = */ "%Lf, " +
-                                /* dx3 = */ "%Lf, " +
-                                /* dy3 = */ "%Lf" +
-                                ")",
-                        dx1,
-                        dy1,
-                        dx2,
-                        dy2,
-                        dx3,
-                        dy3
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeHorizontalTo -> {
-                    add(
-                        "horizontalLineToRelative(" +
-                                /* dx = */ "%Lf" +
-                                ")",
-                        dx
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeLineTo -> {
-                    add(
-                        "lineToRelative(" +
-                                /* dx = */ "%Lf, " +
-                                /* dy = */ "%Lf" +
-                                ")",
-                        dx,
-                        dy
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeMoveTo -> {
-                    add(
-                        "moveToRelative(" +
-                                /* dx = */ "%Lf, " +
-                                /* dy= */ "%Lf" +
-                                ")",
-                        dx,
-                        dy
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeQuadTo -> {
-                    add(
-                        "quadToRelative(" +
-                                /* dx1 = */ "%Lf, " +
-                                /* dy1 = */ "%Lf, " +
-                                /* dx2 = */ "%Lf, " +
-                                /* dy2 = */ "%Lf" +
-                                ")",
-                        dx1,
-                        dy1,
-                        dx2,
-                        dy2
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeReflectiveCurveTo -> {
-                    add(
-                        "reflectiveCurveToRelative(" +
-                                /* dx1 = */ "%Lf, " +
-                                /* dy1 = */ "%Lf, " +
-                                /* dx2 = */ "%Lf, " +
-                                /* dy2 = */ "%Lf" +
-                                ")",
-                        dx1,
-                        dy1,
-                        dx2,
-                        dy2
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeReflectiveQuadTo -> {
-                    add(
-                        "reflectiveQuadToRelative(" +
-                                /* dx = */ "%Lf, " +
-                                /* dy = */ "%Lf" +
-                                ")",
-                        dx,
-                        dy
-                    )
-                }
-
-                is ImageVector.PathNode.RelativeVerticalTo -> {
-                    add(
-                        "verticalLineToRelative(" +
-                                /* dy = */ "%Lf" +
-                                ")",
-                        dy
-                    )
-                }
-
-                is ImageVector.PathNode.VerticalTo -> {
-                    add(
-                        "verticalLineTo(" +
-                                /* y = */ "%Lf" +
-                                ")",
-                        y
-                    )
-                }
-            }
-        }
-    }
-
-    fun ImageVector.Brush.toCodeBlock(): CodeBlock {
-        return buildCodeBlock {
-            when (this@toCodeBlock) {
-                is ImageVector.Brush.SolidColor -> {
-                    add("%M(%M(%L))", MemberNames.SolidColor, MemberNames.Color, color.hex)
+                    is ImageVector.RgbColor -> {
+                        add(
+                            "%M(%M(0x%L))",
+                            MemberNames.SolidColor,
+                            MemberNames.Color,
+                            color.teHexString()
+                        )
+                    }
                 }
             }
         }

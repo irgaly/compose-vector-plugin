@@ -30,7 +30,19 @@ data class ImageVector(
             val translationX: Float? = null,
             val translationY: Float? = null,
             val clipPathData: List<PathNode> = emptyList(),
-        ) : VectorNode
+            val extra: Extra? = null,
+        ) : VectorNode {
+            data class Extra(
+                val id: Long,
+                val fill: Brush? = null,
+                val fillAlpha: Float? = null,
+                val stroke: Brush? = null,
+                val strokeAlpha: Float? = null,
+                val strokeLineWidth: Float? = null,
+                val strokeLineCap: StrokeCap? = null,
+                val strokeLineJoin: StrokeJoin? = null,
+            )
+        }
 
         data class VectorPath(
             val pathData: List<PathNode>,
@@ -68,7 +80,19 @@ data class ImageVector(
         Bevel, Miter, Round
     }
 
-    data class Color(val hex: String)
+    sealed interface Color
+    data class RgbColor(
+        val red: Int,
+        val green: Int,
+        val blue: Int,
+        val alpha: Int = 0xFF,
+    ) : Color {
+        fun teHexString(prefix: String = ""): String {
+            return "%s%02X%02X%02X%02X".format(prefix, alpha, red, green, blue)
+        }
+    }
+
+    data object Transparent : Color
     sealed interface PathNode {
         data class ArcTo(
             val horizontalEllipseRadius: Float,
