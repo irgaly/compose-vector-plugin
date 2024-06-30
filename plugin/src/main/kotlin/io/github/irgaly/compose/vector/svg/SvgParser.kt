@@ -9,6 +9,12 @@ import org.apache.batik.anim.dom.SVGOMElement
 import org.apache.batik.anim.dom.SVGOMGElement
 import org.apache.batik.anim.dom.SVGOMPathElement
 import org.apache.batik.anim.dom.SVGOMSVGElement
+import org.apache.batik.anim.dom.SVGStylableElement
+import org.apache.batik.bridge.BridgeContext
+import org.apache.batik.bridge.DocumentLoader
+import org.apache.batik.bridge.GVTBuilder
+import org.apache.batik.bridge.UserAgentAdapter
+import org.apache.batik.dom.GenericAttr
 import org.apache.batik.util.XMLResourceDescriptor
 import java.io.IOException
 import java.io.InputStream
@@ -28,6 +34,8 @@ class SvgParser {
             ).createDocument("xml", input) as SVGOMDocument
         } catch (error: IOException) {
             throw error
+        }.apply {
+            initializeSvgCssEngine()
         }
         val svg = (document.rootElement as SVGOMSVGElement)
         val viewBox = (svg.viewBox as SVGOMAnimatedRect)
@@ -168,6 +176,22 @@ class SvgParser {
         return imageVector
     }
 
+    /**
+     * Initialize CSSEngine
+     *
+     * * see https://stackoverflow.com/a/46845740/13403244
+     * * see https://github.com/afester/CodeSamples/blob/b3ddb0efdd03713b0adf2d8488fc088dabfeea49/Java/JavaFXSample/src/com/example/svg/SVGDocumentLoader.java#L144
+     */
+    private fun SVGOMDocument.initializeSvgCssEngine() {
+        val userAgent = UserAgentAdapter()
+        val bridgeContext = BridgeContext(
+            userAgent, DocumentLoader(userAgent)
+        ).apply {
+            setDynamicState(BridgeContext.DYNAMIC)
+        }
+        GVTBuilder().build(bridgeContext, this)
+    }
+
     private fun SVGOMElement.traverse(
         onGroupBegin: (element: SVGOMGElement) -> Unit,
         onGroupEnd: (element: SVGOMGElement) -> Unit,
@@ -175,16 +199,24 @@ class SvgParser {
     ) {
         var child = (this.firstElementChild as? SVGOMElement)
         while (child != null) {
-            when (child) {
-                is SVGOMGElement -> {
-                    onGroupBegin(child)
-                    child.traverse(onGroupBegin, onGroupEnd, onOtherNode)
-                    onGroupEnd(child)
+            val displayAttribute = (child.attributes.getNamedItem("display") as? GenericAttr)
+            val displayValue = displayAttribute?.value
+            val style = (child as? SVGStylableElement)?.style
+            val styleDisplayValue = style?.getPropertyValue("display")
+            if (displayValue != "none" && styleDisplayValue != "none") {
+                when (child) {
+                    is SVGOMGElement -> {
+                        onGroupBegin(child)
+                        child.traverse(onGroupBegin, onGroupEnd, onOtherNode)
+                        onGroupEnd(child)
+                    }
+
+                    is SVGOMPathElement -> {
+                        onOtherNode()
+                    }
+
+                    else -> {}
                 }
-                is SVGOMPathElement -> {
-                    onOtherNode()
-                }
-                else -> {}
             }
             child = (child.nextElementSibling as? SVGOMElement)
         }
