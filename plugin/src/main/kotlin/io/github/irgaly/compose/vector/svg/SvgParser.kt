@@ -6,6 +6,9 @@ import com.steadystate.css.parser.LexicalUnitImpl
 import com.steadystate.css.parser.SACParserCSS3
 import com.steadystate.css.parser.Token
 import io.github.irgaly.compose.vector.node.ImageVector
+import io.github.irgaly.compose.vector.node.ImageVector.Brush
+import io.github.irgaly.compose.vector.node.ImageVector.StrokeCap
+import io.github.irgaly.compose.vector.node.ImageVector.StrokeJoin
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
 import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
@@ -32,6 +35,7 @@ import org.w3c.dom.css.CSSPrimitiveValue.CSS_PX
 import org.w3c.dom.css.CSSStyleDeclaration
 import java.io.IOException
 import java.io.InputStream
+import kotlin.reflect.KProperty
 
 /**
  * SVG -> ImageVector
@@ -51,7 +55,9 @@ class SvgParser {
         }.apply {
             initializeSvgCssEngine()
         }
-        val svg = (document.rootElement as SVGOMSVGElement)
+        val svg = (document.rootElement as SVGOMSVGElement).apply {
+            mergeStyle()
+        }
         val viewBox = (svg.viewBox as SVGOMAnimatedRect)
         val viewBoxX = if (viewBox.isSpecified) svg.viewBox.baseVal.x else 0f
         val viewBoxY = if (viewBox.isSpecified) svg.viewBox.baseVal.y else 0f
@@ -69,21 +75,125 @@ class SvgParser {
         if (viewBoxHeight == null) {
             viewBoxHeight = height
         }
-        // TODO: svg fill attributeに対応する
         // TODO: useタグに対応する
         // * id付きのタグをfunで定義して使い回す
-        var rootNodes = mutableListOf<ImageVector.VectorNode>()
-        val currentNodesStack = mutableListOf(rootNodes)
         var extraId: Long = 0
+        val rootExtra = svg.getStyleExtra(extraId = extraId.toString())
+        if (rootExtra != null) {
+            extraId++
+        }
+        var rootGroup = ImageVector.VectorNode.VectorGroup(
+            nodes = emptyList(),
+            // translate by viewBoxX
+            translationX = if (viewBoxX != 0f) -viewBoxX else null,
+            // translate by viewBoxY
+            translationY = if (viewBoxY != 0f) -viewBoxY else null,
+            extra = rootExtra
+        )
+        val groups = mutableListOf(Triple(rootGroup, mutableListOf<ImageVector.VectorNode>(), mutableSetOf<KProperty<*>>()))
         svg.traverse(
             onElementBegin = { element ->
                 when (element) {
                     is SVGOMGElement -> {
-                        currentNodesStack.add(mutableListOf())
+                        val extra = element.getStyleExtra(extraId = extraId.toString())
+                        if (extra != null) {
+                            extraId++
+                        }
+                        val group = ImageVector.VectorNode.VectorGroup(
+                            nodes = emptyList(),
+                            name = element.xmlId.ifEmpty { null },
+                            // TODO: implement translation
+                            // TODO: implement clipPath
+                            extra = extra
+                        )
+                        groups.add(Triple(group, mutableListOf(), mutableSetOf()))
                     }
 
                     is SVGOMPathElement -> {
-
+                        val style = element.getStyleDeclaration()
+                        val fill = style.getColorValue("fill")?.toBrush()
+                        val fillAlpha = style.getNullablePropertyValue("fill-opacity")?.toFloat()
+                        val stroke = style.getColorValue("stroke")?.toBrush()
+                        val strokeAlpha = style.getNullablePropertyValue("stroke-opacity")?.toFloat()
+                        val strokeLineWidth = style.getFloatPxValue("stroke-width")
+                        val strokeLineCap = style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
+                        val strokeLineJoin = style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
+                        var fillId: String? = null
+                        var fillAlphaId: String? = null
+                        var strokeId: String? = null
+                        var strokeAlphaId: String? = null
+                        var strokeLineWidthId: String? = null
+                        var strokeLineCapId: String? = null
+                        var strokeLineJoinId: String? = null
+                        groups.reversed().forEach { group ->
+                            val extra = group.first.extra
+                            if (extra != null) {
+                                if (fill == null && fillId == null && extra.fill != null) {
+                                    fillId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::fill)
+                                }
+                                if (fillAlpha == null && fillAlphaId == null && extra.fillAlpha != null) {
+                                    fillAlphaId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)
+                                }
+                                if (stroke == null && strokeId == null && extra.stroke != null) {
+                                    strokeId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::stroke)
+                                }
+                                if (strokeAlpha == null && strokeAlphaId == null && extra.strokeAlpha != null) {
+                                    strokeAlphaId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)
+                                }
+                                if (strokeLineWidth == null && strokeLineWidthId == null && extra.strokeLineWidth != null) {
+                                    strokeLineWidthId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)
+                                }
+                                if (strokeLineCap == null && strokeLineCapId == null && extra.strokeLineCap != null) {
+                                    strokeLineCapId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)
+                                }
+                                if (strokeLineJoin == null && strokeLineJoinId == null && extra.strokeLineJoin != null) {
+                                    strokeLineJoinId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)
+                                }
+                            }
+                        }
+                        val extraReference = if ((fillId != null) ||
+                            (fillAlphaId != null) ||
+                            (strokeId != null) ||
+                            (strokeAlphaId != null) ||
+                            (strokeLineWidthId != null) ||
+                            (strokeLineCapId != null) ||
+                            (strokeLineJoinId != null)) {
+                            ImageVector.VectorNode.VectorPath.ExtraReference(
+                                fillId = fillId,
+                                fillAlphaId = fillAlphaId,
+                                strokeId = strokeId,
+                                strokeAlphaId = strokeAlphaId,
+                                strokeLineWidthId = strokeLineWidthId,
+                                strokeLineCapId = strokeLineCapId,
+                                strokeLineJoinId = strokeLineJoinId,
+                            )
+                        } else null
+                        groups.last().second.add(
+                            ImageVector.VectorNode.VectorPath(
+                                pathData = emptyList(),
+                                pathFillType = null,
+                                name = element.xmlId.ifEmpty { null },
+                                fill = fill,
+                                fillAlpha = fillAlpha,
+                                stroke = stroke,
+                                strokeAlpha = strokeAlpha,
+                                strokeLineWidth = strokeLineWidth,
+                                strokeLineCap = strokeLineCap,
+                                strokeLineJoin = strokeLineJoin,
+                                strokeLineMiter = null,
+                                trimPathStart = null,
+                                trimPathEnd = null,
+                                trimPathOffset = null,
+                                extraReference = extraReference
+                            )
+                        )
                     }
 
                     else -> {}
@@ -92,19 +202,26 @@ class SvgParser {
             onElementEnd = { element ->
                 when (element) {
                     is SVGOMGElement -> {
-                        val childNodes = currentNodesStack.removeLast()
-                        val currentNodes = currentNodesStack.last()
-                        val extra = element.getStyleExtra(extraId = extraId)
-                        if (extra != null) {
-                            extraId++
-                        }
-                        currentNodes.add(
-                            ImageVector.VectorNode.VectorGroup(
-                                childNodes,
-                                name = element.xmlId.ifEmpty { null },
-                                // TODO: implement translation
-                                // TODO: implement clipPath
-                                extra = extra
+                        val group = groups.removeLast()
+                        val parent = groups.last()
+                        val extra = group.first.extra
+                        val properties = group.third
+                        val referencedExtra = if (extra != null && properties.isNotEmpty()) {
+                            ImageVector.VectorNode.VectorGroup.Extra(
+                                id = extra.id,
+                                fill = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fill)) extra.fill else null,
+                                fillAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)) extra.fillAlpha else null,
+                                stroke = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::stroke)) extra.stroke else null,
+                                strokeAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)) extra.strokeAlpha else null,
+                                strokeLineWidth = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)) extra.strokeLineWidth else null,
+                                strokeLineCap = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)) extra.strokeLineCap else null,
+                                strokeLineJoin = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)) extra.strokeLineJoin else null,
+                            )
+                        } else null
+                        parent.second.add(
+                            group.first.copy(
+                                nodes = group.second.toList(),
+                                referencedExtra = referencedExtra,
                             )
                         )
                     }
@@ -117,7 +234,7 @@ class SvgParser {
                 }
             }
         )
-        rootNodes.add(
+        groups.last().second.add(
             ImageVector.VectorNode.VectorGroup(
                 listOf(
                     ImageVector.VectorNode.VectorGroup(
@@ -169,7 +286,7 @@ class SvgParser {
                 ),
             )
         )
-        rootNodes.add(
+        groups.last().second.add(
             ImageVector.VectorNode.VectorPath(
                 listOf(
                     ImageVector.PathNode.HorizontalTo(10f),
@@ -190,17 +307,24 @@ class SvgParser {
                 0f
             )
         )
-        if (viewBoxX != 0f || viewBoxY != 0f) {
-            // translate by viewBox
-            rootNodes = mutableListOf(
-                ImageVector.VectorNode.VectorGroup(
-                    nodes = rootNodes,
-                    translationX = if (viewBoxX != 0f) -viewBoxX else null,
-                    translationY = if (viewBoxY != 0f) -viewBoxY else null,
-                    clipPathData = emptyList(),
-                )
+        val extra = rootGroup.extra
+        val properties = groups.last().third
+        val referencedExtra = if (extra != null && properties.isNotEmpty()) {
+            ImageVector.VectorNode.VectorGroup.Extra(
+                id = extra.id,
+                fill = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fill)) extra.fill else null,
+                fillAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)) extra.fillAlpha else null,
+                stroke = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::stroke)) extra.stroke else null,
+                strokeAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)) extra.strokeAlpha else null,
+                strokeLineWidth = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)) extra.strokeLineWidth else null,
+                strokeLineCap = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)) extra.strokeLineCap else null,
+                strokeLineJoin = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)) extra.strokeLineJoin else null,
             )
-        }
+        } else null
+        rootGroup = groups.last().first.copy(
+            nodes = groups.last().second,
+            referencedExtra = referencedExtra
+        )
         val imageVector = ImageVector(
             name = "IconName",
             defaultWidth = width.toDouble(),
@@ -208,7 +332,7 @@ class SvgParser {
             viewportWidth = viewBoxWidth,
             viewportHeight = viewBoxHeight,
             autoMirror = false,
-            nodes = rootNodes.toList()
+            rootGroup = rootGroup
         )
         return imageVector
     }
@@ -248,38 +372,36 @@ private fun SVGOMElement.traverse(
     }
 }
 
-private fun SVGOMGElement.getStyleExtra(
-    extraId: Long,
+private fun SVGStylableElement.getStyleExtra(
+    extraId: String,
 ): ImageVector.VectorNode.VectorGroup.Extra? {
     var extra: ImageVector.VectorNode.VectorGroup.Extra? = null
-    val style = (this as? SVGStylableElement)?.getStyleDeclaration()
-    if (style != null) {
-        val fill = style.getColorValue("fill")?.toBrush()
-        val fillAlpha = style.getNullablePropertyValue("fill-opacity")?.toFloat()
-        val stroke = style.getColorValue("stroke")?.toBrush()
-        val strokeAlpha = style.getNullablePropertyValue("stroke-opacity")?.toFloat()
-        val strokeLineWidth = style.getFloatPxValue("stroke-width")
-        val strokeLineCap = style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
-        val strokeLineJoin = style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
-        if (fill != null ||
-            fillAlpha != null ||
-            stroke != null ||
-            strokeAlpha != null ||
-            strokeLineWidth != null ||
-            strokeLineCap != null ||
-            strokeLineJoin != null
-        ) {
-            extra = ImageVector.VectorNode.VectorGroup.Extra(
-                id = extraId,
-                fill = fill,
-                fillAlpha = fillAlpha,
-                stroke = stroke,
-                strokeAlpha = strokeAlpha,
-                strokeLineWidth = strokeLineWidth,
-                strokeLineCap = strokeLineCap,
-                strokeLineJoin = strokeLineJoin
-            )
-        }
+    val style = getStyleDeclaration()
+    val fill = style.getColorValue("fill")?.toBrush()
+    val fillAlpha = style.getNullablePropertyValue("fill-opacity")?.toFloat()
+    val stroke = style.getColorValue("stroke")?.toBrush()
+    val strokeAlpha = style.getNullablePropertyValue("stroke-opacity")?.toFloat()
+    val strokeLineWidth = style.getFloatPxValue("stroke-width")
+    val strokeLineCap = style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
+    val strokeLineJoin = style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
+    if (fill != null ||
+        fillAlpha != null ||
+        stroke != null ||
+        strokeAlpha != null ||
+        strokeLineWidth != null ||
+        strokeLineCap != null ||
+        strokeLineJoin != null
+    ) {
+        extra = ImageVector.VectorNode.VectorGroup.Extra(
+            id = extraId,
+            fill = fill,
+            fillAlpha = fillAlpha,
+            stroke = stroke,
+            strokeAlpha = strokeAlpha,
+            strokeLineWidth = strokeLineWidth,
+            strokeLineCap = strokeLineCap,
+            strokeLineJoin = strokeLineJoin
+        )
     }
     return extra
 }

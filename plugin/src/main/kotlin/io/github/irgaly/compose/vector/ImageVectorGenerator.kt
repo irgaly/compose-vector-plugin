@@ -70,7 +70,15 @@ class ImageVectorGenerator {
                             )
                             indent()
                             // TODO: use タグを fun で再現する
-                            imageVector.nodes.recursiveForEach(
+                            val rootGroup = imageVector.rootGroup
+                            var nodes = listOf<ImageVector.VectorNode>(rootGroup)
+                            if (rootGroup.translationX == null && rootGroup.translationY == null) {
+                                nodes = rootGroup.nodes
+                                if (rootGroup.referencedExtra != null) {
+                                    addExtraReferenceCodeBlock(rootGroup.referencedExtra)
+                                }
+                            }
+                            nodes.recursiveForEach(
                                 onGroupBegin = { node ->
                                     val groupArguments = buildList<CodeBlock.Builder.() -> Unit> {
                                         if (node.name != null) {
@@ -122,49 +130,8 @@ class ImageVectorGenerator {
                                     } else {
                                         beginControlFlow("%M", MemberNames.Vector.Group)
                                     }
-                                    if (node.extra != null) {
-                                        if (node.extra.fill != null) {
-                                            add("val fill${node.extra.id} = ")
-                                            add(node.extra.fill.toCodeBlock())
-                                            add("\n")
-                                        }
-                                        if (node.extra.fillAlpha != null) {
-                                            addStatement(
-                                                "val fillAlpha${node.extra.id} = %Lf",
-                                                node.extra.fillAlpha
-                                            )
-                                        }
-                                        if (node.extra.stroke != null) {
-                                            add("val stroke${node.extra.id} = ")
-                                            add(node.extra.stroke.toCodeBlock())
-                                            add("\n")
-                                        }
-                                        if (node.extra.strokeAlpha != null) {
-                                            addStatement(
-                                                "val strokeAlpha${node.extra.id} = %Lf",
-                                                node.extra.strokeAlpha
-                                            )
-                                        }
-                                        if (node.extra.strokeLineWidth != null) {
-                                            addStatement(
-                                                "val strokeLineWidth${node.extra.id} = %Lf",
-                                                node.extra.strokeLineWidth
-                                            )
-                                        }
-                                        if (node.extra.strokeLineCap != null) {
-                                            addStatement(
-                                                "val strokeLineCap${node.extra.id} = %M.%L",
-                                                MemberNames.StrokeCap,
-                                                node.extra.strokeLineCap.name
-                                            )
-                                        }
-                                        if (node.extra.strokeLineJoin != null) {
-                                            addStatement(
-                                                "val strokeLineJoin${node.extra.id} = %M.%L",
-                                                MemberNames.StrokeJoin,
-                                                node.extra.strokeLineJoin.name
-                                            )
-                                        }
+                                    if (node.referencedExtra != null) {
+                                        addExtraReferenceCodeBlock(node.referencedExtra)
                                     }
                                 },
                                 onGroupEnd = { _ ->
@@ -189,31 +156,59 @@ class ImageVectorGenerator {
                                         if (node.name != null) {
                                             add { add("name = %S", node.name) }
                                         }
-                                        if (node.fill != null) {
+                                        if (node.extraReference?.fillId != null) {
+                                            add {
+                                                add("fill = fill${node.extraReference.fillId}")
+                                            }
+                                        } else if (node.fill != null) {
                                             add {
                                                 add("fill = ")
                                                 add(node.fill.toCodeBlock())
                                             }
                                         }
-                                        if (node.fillAlpha != null) {
+                                        if (node.extraReference?.fillAlphaId != null) {
+                                            add {
+                                                add("fillAlpha = fillAlpha${node.extraReference.fillAlphaId}")
+                                            }
+                                        } else if (node.fillAlpha != null) {
                                             add { add("fillAlpha = %Lf", node.fillAlpha) }
                                         }
-                                        if (node.stroke != null) {
+                                        if (node.extraReference?.strokeId != null) {
+                                            add {
+                                                add("stroke = stroke${node.extraReference.strokeId}")
+                                            }
+                                        } else if (node.stroke != null) {
                                             add {
                                                 add("stroke = ")
                                                 add(node.stroke.toCodeBlock())
                                             }
                                         }
-                                        if (node.strokeAlpha != null) {
+                                        if (node.extraReference?.strokeAlphaId != null) {
+                                            add {
+                                                add("strokeAlpha = strokeAlpha${node.extraReference.strokeAlphaId}")
+                                            }
+                                        } else if (node.strokeAlpha != null) {
                                             add { add("strokeAlpha = %Lf", node.strokeAlpha) }
                                         }
-                                        if (node.strokeLineWidth != null) {
+                                        if (node.extraReference?.strokeLineWidthId != null) {
+                                            add {
+                                                add("strokeLineWidth = strokeLineWidth${node.extraReference.strokeLineWidthId}")
+                                            }
+                                        } else if (node.strokeLineWidth != null) {
                                             add { add("strokeLineWidth = %Lf", node.strokeLineWidth) }
                                         }
-                                        if (node.strokeLineCap != null) {
+                                        if (node.extraReference?.strokeLineCapId != null) {
+                                            add {
+                                                add("strokeLineCap = strokeLineCap${node.extraReference.strokeLineCapId}")
+                                            }
+                                        } else if (node.strokeLineCap != null) {
                                             add { add("strokeLineCap = %M.%L", MemberNames.StrokeCap, node.strokeLineCap.name) }
                                         }
-                                        if (node.strokeLineJoin != null) {
+                                        if (node.extraReference?.strokeLineJoinId != null) {
+                                            add {
+                                                add("strokeLineJoin = strokeLineJoin${node.extraReference.strokeLineJoinId}")
+                                            }
+                                        } else if (node.strokeLineJoin != null) {
                                             add { add("strokeLineJoin = %M.%L", MemberNames.StrokeJoin, node.strokeLineJoin.name) }
                                         }
                                         if (node.strokeLineMiter != null) {
@@ -274,6 +269,53 @@ class ImageVectorGenerator {
         )
         builder.addFunction(preview2FunSpec.build())
         return builder.setIndent().build().toString()
+    }
+
+    private fun CodeBlock.Builder.addExtraReferenceCodeBlock(
+        referencedExtra: ImageVector.VectorNode.VectorGroup.Extra
+    ) {
+        if (referencedExtra.fill != null) {
+            add("val fill${referencedExtra.id} = ")
+            add(referencedExtra.fill.toCodeBlock())
+            add("\n")
+        }
+        if (referencedExtra.fillAlpha != null) {
+            addStatement(
+                "val fillAlpha${referencedExtra.id} = %Lf",
+                referencedExtra.fillAlpha
+            )
+        }
+        if (referencedExtra.stroke != null) {
+            add("val stroke${referencedExtra.id} = ")
+            add(referencedExtra.stroke.toCodeBlock())
+            add("\n")
+        }
+        if (referencedExtra.strokeAlpha != null) {
+            addStatement(
+                "val strokeAlpha${referencedExtra.id} = %Lf",
+                referencedExtra.strokeAlpha
+            )
+        }
+        if (referencedExtra.strokeLineWidth != null) {
+            addStatement(
+                "val strokeLineWidth${referencedExtra.id} = %Lf",
+                referencedExtra.strokeLineWidth
+            )
+        }
+        if (referencedExtra.strokeLineCap != null) {
+            addStatement(
+                "val strokeLineCap${referencedExtra.id} = %M.%L",
+                MemberNames.StrokeCap,
+                referencedExtra.strokeLineCap.name
+            )
+        }
+        if (referencedExtra.strokeLineJoin != null) {
+            addStatement(
+                "val strokeLineJoin${referencedExtra.id} = %M.%L",
+                MemberNames.StrokeJoin,
+                referencedExtra.strokeLineJoin.name
+            )
+        }
     }
 }
 

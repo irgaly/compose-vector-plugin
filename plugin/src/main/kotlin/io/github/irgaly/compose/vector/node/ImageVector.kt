@@ -16,7 +16,7 @@ data class ImageVector(
     val viewportWidth: Float,
     val viewportHeight: Float,
     val autoMirror: Boolean,
-    val nodes: List<VectorNode>,
+    val rootGroup: VectorNode.VectorGroup,
 ) {
     sealed interface VectorNode {
         data class VectorGroup(
@@ -31,9 +31,10 @@ data class ImageVector(
             val translationY: Float? = null,
             val clipPathData: List<PathNode> = emptyList(),
             val extra: Extra? = null,
+            val referencedExtra: Extra? = null,
         ) : VectorNode {
             data class Extra(
-                val id: Long,
+                val id: String,
                 val fill: Brush? = null,
                 val fillAlpha: Float? = null,
                 val stroke: Brush? = null,
@@ -59,7 +60,18 @@ data class ImageVector(
             val trimPathStart: Float? = null,
             val trimPathEnd: Float? = null,
             val trimPathOffset: Float? = null,
-        ) : VectorNode
+            val extraReference: ExtraReference? = null
+        ) : VectorNode {
+            data class ExtraReference(
+                val fillId: String? = null,
+                val fillAlphaId: String? = null,
+                val strokeId: String? = null,
+                val strokeAlphaId: String? = null,
+                val strokeLineWidthId: String? = null,
+                val strokeLineCapId: String? = null,
+                val strokeLineJoinId: String? = null,
+            )
+        }
     }
 
     enum class PathFillType {
