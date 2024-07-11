@@ -21,13 +21,17 @@ val svg = """
   height="24px"
   viewBox="0 -960 960 960"
   width="24px"
-  fill="#e8eaed">
+  fill="#FFe8eaed"
+  stroke-width="10px">
   <g display="none" style="display:none" />
-  <g stroke="#04010203" />
+  <g stroke="rgb(1 2 3 4)" />
+  <g stroke="rgb(1 2 3 / 4)" />
+  <g stroke="rgba(1%,2%,3%,4%)" />
+  <g stroke="#01020304" />
   <g stroke="transparent" />
   <g stroke="red" />
-  <g style="stroke: #04010203" />
   <path
     d="M280-200v-80h284q63 0 109.5-40T720-420q0-60-46.5-100T564-560H312l104 104-56 56-200-200 200-200 56 56-104 104h252q97 0 166.5 63T800-420q0 94-69.5 157T564-200H280Z" />
+    -->
 </svg>
 """

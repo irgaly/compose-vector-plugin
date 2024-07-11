@@ -1,15 +1,8 @@
 package io.github.irgaly.compose.vector.svg
 
-import com.steadystate.css.dom.CSSValueImpl
-import com.steadystate.css.parser.CSSOMParser
-import com.steadystate.css.parser.LexicalUnitImpl
-import com.steadystate.css.parser.SACParserCSS3
-import com.steadystate.css.parser.Token
 import io.github.irgaly.compose.vector.node.ImageVector
-import io.github.irgaly.compose.vector.node.ImageVector.Brush
-import io.github.irgaly.compose.vector.node.ImageVector.StrokeCap
-import io.github.irgaly.compose.vector.node.ImageVector.StrokeJoin
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
+import org.apache.batik.anim.dom.SVG12DOMImplementation
 import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
 import org.apache.batik.anim.dom.SVGOMDocument
@@ -22,16 +15,30 @@ import org.apache.batik.bridge.BridgeContext
 import org.apache.batik.bridge.DocumentLoader
 import org.apache.batik.bridge.GVTBuilder
 import org.apache.batik.bridge.UserAgentAdapter
+import org.apache.batik.bridge.svg12.SVG12BridgeContext
+import org.apache.batik.css.dom.CSSOMSVGStyleDeclaration
+import org.apache.batik.css.engine.CSSContext
+import org.apache.batik.css.engine.CSSEngine
+import org.apache.batik.css.engine.CSSStylableElement
+import org.apache.batik.css.engine.StyleMap
+import org.apache.batik.css.engine.value.AbstractColorManager
+import org.apache.batik.css.engine.value.AbstractValue
+import org.apache.batik.css.engine.value.ShorthandManager
+import org.apache.batik.css.engine.value.StringValue
+import org.apache.batik.css.engine.value.Value
+import org.apache.batik.css.engine.value.ValueConstants.NUMBER_0
+import org.apache.batik.css.engine.value.ValueManager
+import org.apache.batik.css.parser.CSSLexicalUnit
+import org.apache.batik.css.parser.ExtendedParser
+import org.apache.batik.css.parser.LexicalUnits
+import org.apache.batik.css.parser.Parser
+import org.apache.batik.dom.AbstractStylableDocument
 import org.apache.batik.dom.GenericAttr
 import org.apache.batik.svggen.SVGColor
 import org.apache.batik.util.XMLResourceDescriptor
-import org.w3c.css.sac.CSSParseException
-import org.w3c.css.sac.ErrorHandler
-import org.w3c.css.sac.InputSource
 import org.w3c.css.sac.LexicalUnit
+import org.w3c.dom.DOMImplementation
 import org.w3c.dom.css.CSSPrimitiveValue
-import org.w3c.dom.css.CSSPrimitiveValue.CSS_PERCENTAGE
-import org.w3c.dom.css.CSSPrimitiveValue.CSS_PX
 import org.w3c.dom.css.CSSStyleDeclaration
 import java.io.IOException
 import java.io.InputStream
@@ -47,7 +54,7 @@ class SvgParser {
      */
     fun parse(input: InputStream): ImageVector {
         val document = try {
-            SAXSVGDocumentFactory(
+            SAXSVGDocumentFactoryCSS3ColorFix(
                 XMLResourceDescriptor.getXMLParserClassName()
             ).createDocument("xml", input) as SVGOMDocument
         } catch (error: IOException) {
@@ -110,14 +117,13 @@ class SvgParser {
                     }
 
                     is SVGOMPathElement -> {
-                        val style = element.getStyleDeclaration()
-                        val fill = style.getColorValue("fill")?.toBrush()
-                        val fillAlpha = style.getNullablePropertyValue("fill-opacity")?.toFloat()
-                        val stroke = style.getColorValue("stroke")?.toBrush()
-                        val strokeAlpha = style.getNullablePropertyValue("stroke-opacity")?.toFloat()
-                        val strokeLineWidth = style.getFloatPxValue("stroke-width")
-                        val strokeLineCap = style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
-                        val strokeLineJoin = style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
+                        val fill = element.style.getColor("fill")?.toBrush()
+                        val fillAlpha = element.style.getNullablePropertyValue("fill-opacity")?.toFloat()
+                        val stroke = element.style.getColor("stroke")?.toBrush()
+                        val strokeAlpha = element.style.getNullablePropertyValue("stroke-opacity")?.toFloat()
+                        val strokeLineWidth = element.style.getFloatPxValue("stroke-width")
+                        val strokeLineCap = element.style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
+                        val strokeLineJoin = element.style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
                         var fillId: String? = null
                         var fillAlphaId: String? = null
                         var strokeId: String? = null
@@ -345,12 +351,17 @@ class SvgParser {
  * * see https://github.com/afester/CodeSamples/blob/b3ddb0efdd03713b0adf2d8488fc088dabfeea49/Java/JavaFXSample/src/com/example/svg/SVGDocumentLoader.java#L144
  */
 private fun SVGOMDocument.initializeSvgCssEngine() {
-    val userAgent = UserAgentAdapter()
-    val bridgeContext = BridgeContext(
+    val userAgent = object: UserAgentAdapter() {
+        override fun displayMessage(message: String) {
+            println(message)
+        }
+    }
+    val bridgeContext = SVG12BridgeContext(
         userAgent, DocumentLoader(userAgent)
     ).apply {
         setDynamicState(BridgeContext.DYNAMIC)
     }
+    ParserCSS3ColorFix.registerParser()
     GVTBuilder().build(bridgeContext, this)
 }
 
@@ -376,10 +387,9 @@ private fun SVGStylableElement.getStyleExtra(
     extraId: String,
 ): ImageVector.VectorNode.VectorGroup.Extra? {
     var extra: ImageVector.VectorNode.VectorGroup.Extra? = null
-    val style = getStyleDeclaration()
-    val fill = style.getColorValue("fill")?.toBrush()
+    val fill = style.getColor("fill")?.toBrush()
     val fillAlpha = style.getNullablePropertyValue("fill-opacity")?.toFloat()
-    val stroke = style.getColorValue("stroke")?.toBrush()
+    val stroke = style.getColor("stroke")?.toBrush()
     val strokeAlpha = style.getNullablePropertyValue("stroke-opacity")?.toFloat()
     val strokeLineWidth = style.getFloatPxValue("stroke-width")
     val strokeLineCap = style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
@@ -424,7 +434,6 @@ private fun String.toColor(): ImageVector.Color {
             error("invalid color string: $this")
         }
         buildString {
-            append("FF")
             values.forEach { valueString ->
                 val color = if (valueString.endsWith("%")) {
                     val value = valueString.substring(0, valueString.length - 1).toFloat()
@@ -434,22 +443,26 @@ private fun String.toColor(): ImageVector.Color {
                 }
                 append("%02X".format(color))
             }
+            if (values.size <= 3) {
+                append("FF")
+            }
         }
     } else {
         trimmed.replace("^#".toRegex(), "")
             .let {
                 if ("^[0-9a-fA-F]{6,8}$".toRegex().matches(it)) {
-                    when (it.length) {
-                        6 -> "FF$it"
-                        7 -> "0$it"
-                        else -> it
-                    }
+                    if (it.length == 6) "${it}FF" else it
                 } else {
-                    "FF000000"
+                    "000000FF"
                 }
             }
     }
-    return ImageVector.RgbColor(0, 0, 0)
+    return ImageVector.RgbColor(
+        red = hex.substring(0, 1).toInt(16),
+        green = hex.substring(2, 3).toInt(16),
+        blue = hex.substring(4, 5).toInt(16),
+        alpha = hex.substring(6, 7).toInt(16),
+    )
 }
 
 private fun ImageVector.Color.toBrush(): ImageVector.Brush {
@@ -460,23 +473,31 @@ private fun CSSStyleDeclaration.getNullablePropertyValue(name: String): String? 
     return getPropertyValue(name).ifEmpty { null }
 }
 
-private fun CSSPrimitiveValue.getColorValue(): Int {
-    return if (primitiveType == CSS_PERCENTAGE) {
-        val percentage = getFloatValue(CSS_PERCENTAGE)
-        (percentage * 255f / 100f).toInt()
-    } else {
-        getFloatValue(primitiveType).toInt()
-    }
-}
-
-private fun CSSStyleDeclaration.getColorValue(name: String): ImageVector.Color? {
-    val cssValue = (getPropertyCSSValue(name) as? CSSValueImpl)
-    val unitValue = (cssValue?.value as? LexicalUnit)
+private fun CSSStyleDeclaration.getColor(name: String): ImageVector.Color? {
+    val cssValue = (getPropertyCSSValue(name) as? CSSOMSVGStyleDeclaration.StyleDeclarationPaintValue)
+    val value = cssValue?.value
     return when {
-        (cssValue?.primitiveType == CSSPrimitiveValue.CSS_IDENT) -> {
+        (value is RGBAColorValue) -> {
+            ImageVector.RgbColor(
+                red = value.red.getColorValue(),
+                green = value.green.getColorValue(),
+                blue = value.blue.getColorValue(),
+                alpha = value.alpha.getColorValue(),
+            )
+        }
+
+        (value?.primitiveType == CSSPrimitiveValue.CSS_RGBCOLOR) -> {
+            ImageVector.RgbColor(
+                red = value.red.getColorValue(),
+                green = value.green.getColorValue(),
+                blue = value.blue.getColorValue(),
+            )
+        }
+
+        (value?.primitiveType == CSSPrimitiveValue.CSS_IDENT) -> {
             // color name
-            val colorName = cssValue.stringValue.lowercase()
-            val colorNameLowercase = cssValue.stringValue.lowercase()
+            val colorName = value.stringValue.lowercase()
+            val colorNameLowercase = value.stringValue.lowercase()
             if (colorNameLowercase == "transparent") {
                 ImageVector.Transparent
             } else {
@@ -508,36 +529,21 @@ private fun CSSStyleDeclaration.getColorValue(name: String): ImageVector.Color? 
             }
         }
 
-        (cssValue?.primitiveType == CSSPrimitiveValue.CSS_RGBCOLOR) -> {
-            val rgb = cssValue.rgbColorValue
-            ImageVector.RgbColor(
-                red = rgb.red.getColorValue(),
-                green = rgb.green.getColorValue(),
-                blue = rgb.blue.getColorValue(),
-            )
-        }
-
-        (unitValue != null && unitValue.functionName.equals("rgba", ignoreCase = true)) -> {
-            val colors = unitValue.parameters.sequence().toList()
-                .filter { (it.lexicalUnitType == LexicalUnit.SAC_INTEGER) }
-                .map { it.integerValue }
-            if (colors.size != 4) {
-                error("rgba() parameter size should be 4: ${colors.size}")
-            }
-            ImageVector.RgbColor(
-                red = colors[0],
-                green = colors[1],
-                blue = colors[2],
-                alpha = colors[3]
-            )
-        }
-
         else -> null
     }
 }
 
+private fun Value.getColorValue(): Int {
+    return if (primitiveType == CSSPrimitiveValue.CSS_PERCENTAGE) {
+        val percentage = floatValue
+        (percentage * 255f / 100f).toInt()
+    } else {
+        floatValue.toInt()
+    }
+}
+
 private fun CSSStyleDeclaration.getFloatPxValue(name: String): Float? {
-    return (getPropertyCSSValue(name) as? CSSPrimitiveValue)?.getFloatValue(CSS_PX)
+    return (getPropertyCSSValue(name) as? CSSPrimitiveValue)?.getFloatValue(CSSPrimitiveValue.CSS_PX)
 }
 
 private fun String.toStrokeCap(): ImageVector.StrokeCap? {
@@ -583,7 +589,6 @@ private fun LexicalUnit.sequence(): Sequence<LexicalUnit> {
  * merge SVG presentation attributes to style attributes
  */
 private fun SVGStylableElement.mergeStyle() {
-    val style = getStyleDeclaration()
     listOf(
         "display",
         "stroke",
@@ -602,84 +607,59 @@ private fun SVGStylableElement.mergeStyle() {
     setAttribute("style", style.cssText)
 }
 
-private fun SVGStylableElement.getStyleDeclaration(): CSSStyleDeclaration {
-    val value = (attributes.getNamedItem("style") as? GenericAttr)?.value ?: ""
-    val handler = object : ErrorHandler {
-        override fun warning(exception: CSSParseException) {
-            println("warning = $exception")
-        }
-
-        override fun error(exception: CSSParseException) {
-            println("error = $exception")
-        }
-
-        override fun fatalError(exception: CSSParseException) {
-            println("fatal = $exception")
-        }
-    }
-    SACParserCSS3ColorFix.registerSACParser()
-    return CSSOMParser(SACParserCSS3ColorFix().apply {
-        setErrorHandler(handler)
-    }).parseStyleDeclaration(
-        InputSource(value.reader())
-    )
-}
-
 /**
  * needs public, because this class will be registered to "org.w3c.css.sac.parser"
  */
-class SACParserCSS3ColorFix : SACParserCSS3() {
+class ParserCSS3ColorFix: Parser() {
     companion object {
-        fun registerSACParser() {
-            System.setProperty(
-                "org.w3c.css.sac.parser",
-                SACParserCSS3ColorFix::class.java.canonicalName
-            )
+        fun registerParser() {
+            XMLResourceDescriptor.setCSSParserClassName(ParserCSS3ColorFix::class.java.canonicalName)
         }
     }
 
-    override fun functionInternal(
-        prev: LexicalUnit?,
-        funct: String,
-        params: LexicalUnit?,
-    ): LexicalUnit {
-        return if (
-            (params != null)
-            && (funct.equals("rgb(", ignoreCase = true) ||
-                    funct.equals("rgba(", ignoreCase = true))
-        ) {
+    override fun parseFunction(positive: Boolean, prev: LexicalUnit?): LexicalUnit {
+        val name = scanner.stringValue
+        return if (name.equals("rgb", ignoreCase = true) ||
+            name.equals("rgba", ignoreCase = true)) {
             // Support
             //   rgb(0 0 0), rgb(0 0 0 0), rgb(0 0 0 / 0)
             //   rgba(0 0 0), rgba(0 0 0 0), rgba(0 0 0 / 0)
             // Convert parameters to comma separated format (e.g. "0,0,0,0")
-            var p = (params as? LexicalUnitImpl)
+            nextIgnoreSpaces()
+            val params = parseExpression(true)
+            if (
+                current != LexicalUnits.RIGHT_BRACE) {
+                throw createCSSParseException("token", arrayOf<Any>(current))
+            }
+            nextIgnoreSpaces()
+            var p: LexicalUnit? = params
             while (p != null) {
                 when (p.nextLexicalUnit?.lexicalUnitType) {
-                    LexicalUnit.SAC_OPERATOR_COMMA -> {
-                        // move next value
-                        p = (p.nextLexicalUnit?.nextLexicalUnit as? LexicalUnitImpl)
-                    }
-
-                    LexicalUnit.SAC_OPERATOR_SLASH -> {
-                        // replace comma
-                        val next = (p.nextLexicalUnit?.nextLexicalUnit as? LexicalUnitImpl)
-                        LexicalUnitImpl.createComma(p).let {
-                            next?.previousLexicalUnit = it
-                            (it as LexicalUnitImpl).nextLexicalUnit = next
-                        }
-                        p = next
-                    }
-
                     null -> {
                         p = null
                     }
 
+                    LexicalUnit.SAC_OPERATOR_COMMA -> {
+                        // move next value
+                        p = p.nextLexicalUnit?.nextLexicalUnit
+                    }
+
+                    LexicalUnit.SAC_OPERATOR_SLASH -> {
+                        // replace comma
+                        val next = (p.nextLexicalUnit?.nextLexicalUnit as? CSSLexicalUnit)
+                        CSSLexicalUnit.createSimple(LexicalUnit.SAC_OPERATOR_COMMA, p).let {
+                            next?.previousLexicalUnit = it
+                            it.nextLexicalUnit = next
+                        }
+                        p = next
+                    }
+
                     else -> {
                         // insert comma
-                        val next = (p.nextLexicalUnit as LexicalUnitImpl)
-                        LexicalUnitImpl.createComma(p).let {
+                        val next = (p.nextLexicalUnit as CSSLexicalUnit)
+                        CSSLexicalUnit.createSimple(LexicalUnit.SAC_OPERATOR_COMMA, p).let {
                             next.previousLexicalUnit = it
-                            (it as LexicalUnitImpl).nextLexicalUnit = next
+                            it.nextLexicalUnit = next
                         }
                         p = next
                     }
@@ -689,57 +669,165 @@ class SACParserCSS3ColorFix : SACParserCSS3() {
                 (it.lexicalUnitType != LexicalUnit.SAC_OPERATOR_COMMA)
             }
             if (count == 3) {
-                LexicalUnitImpl.createRgbColor(prev, params)
+                CSSLexicalUnit.createPredefinedFunction(LexicalUnit.SAC_RGBCOLOR, params, prev)
             } else {
-                LexicalUnitImpl.createFunction(prev, "rgba", params)
+                CSSLexicalUnit.createFunction("rgba", params, prev)
             }
         } else {
-            super.functionInternal(prev, funct, params)
+            super.parseFunction(positive, prev)
         }
     }
 
-    override fun hexcolorInternal(prev: LexicalUnit?, token: Token): LexicalUnit {
-        val length = token.image.length - 1
-        return if (length == 4 || length == 8) {
+    override fun hexcolor(prev: LexicalUnit?): LexicalUnit {
+        val value = scanner.stringValue
+        val length = value.length
+        var result: LexicalUnit? = if (length == 4 || length == 8) {
             // Support 4 digits and 8 digits hex color
             // https://www.w3.org/TR/css-color-4/#hex-notation
             try {
-                val i = 1
                 var r: Int
                 var g: Int
                 var b: Int
                 var a: Int
                 if (length == 4) {
-                    r = token.image.substring(i + 0, i + 1).toInt(16)
-                    g = token.image.substring(i + 1, i + 2).toInt(16)
-                    b = token.image.substring(i + 2, i + 3).toInt(16)
-                    a = token.image.substring(i + 3, i + 4).toInt(16)
+                    r = value[0].digitToInt(16)
+                    g = value[1].digitToInt(16)
+                    b = value[2].digitToInt(16)
+                    a = value[3].digitToInt(16)
                     r = (r shl 4) or r
                     g = (g shl 4) or g
                     b = (b shl 4) or b
                     a = (a shl 4) or a
                 } else {
                     // len == 8
-                    r = token.image.substring(i + 0, i + 2).toInt(16)
-                    g = token.image.substring(i + 2, i + 4).toInt(16)
-                    b = token.image.substring(i + 4, i + 6).toInt(16)
-                    a = token.image.substring(i + 6, i + 8).toInt(16)
+                    r = value.substring(0, 2).toInt(16)
+                    g = value.substring(2, 4).toInt(16)
+                    b = value.substring(4, 6).toInt(16)
+                    a = value.substring(6, 8).toInt(16)
                 }
-                val unit = LexicalUnitImpl.createNumber(null, r)
-                var chain = LexicalUnitImpl.createComma(unit)
-                chain = LexicalUnitImpl.createNumber(chain, g)
-                chain = LexicalUnitImpl.createComma(chain)
-                chain = LexicalUnitImpl.createNumber(chain, b)
-                chain = LexicalUnitImpl.createComma(chain)
-                LexicalUnitImpl.createNumber(chain, a)
-                return LexicalUnitImpl.createFunction(prev, "rgba", unit)
-            } catch (error: java.lang.NumberFormatException) {
-                throw CSSParseException(
-                    getSACParserMessages().getString("invalidColor").format(token),
-                    inputSource.uri, token.beginLine,
-                    token.beginColumn, error
-                )
+                val params = CSSLexicalUnit.createInteger(r, null)
+                var chain = CSSLexicalUnit.createSimple(LexicalUnit.SAC_OPERATOR_COMMA, params)
+                chain = CSSLexicalUnit.createInteger(g, chain)
+                chain = CSSLexicalUnit.createSimple(LexicalUnit.SAC_OPERATOR_COMMA, chain)
+                chain = CSSLexicalUnit.createInteger(b, chain)
+                chain = CSSLexicalUnit.createSimple(LexicalUnit.SAC_OPERATOR_COMMA, chain)
+                CSSLexicalUnit.createInteger(a, chain)
+                CSSLexicalUnit.createFunction("rgba", params, prev)
+            } catch (error: NumberFormatException) {
+                throw createCSSParseException("rgb.color")
             }
-        } else super.hexcolorInternal(prev, token)
+        } else null
+        if (result != null) {
+            nextIgnoreSpaces()
+        } else {
+            result = super.hexcolor(prev)!!
+        }
+        return result
+    }
+}
+
+class SAXSVGDocumentFactoryCSS3ColorFix(
+    parser: String?,
+): SAXSVGDocumentFactory(parser) {
+    override fun getDOMImplementation(ver: String?): DOMImplementation {
+        return SVG120DOMImplementationCSS3ColorFix()
+    }
+}
+
+class SVG120DOMImplementationCSS3ColorFix: SVG12DOMImplementation() {
+    override fun createCSSEngine(
+        doc: AbstractStylableDocument,
+        ctx: CSSContext,
+        ep: ExtendedParser,
+        vms: Array<out ValueManager>,
+        sms: Array<out ShorthandManager>,
+    ): CSSEngine {
+        return super.createCSSEngine(doc, ctx, ep, vms, sms).apply {
+            val managers = this.valueManagers
+            managers.indices.forEach { index ->
+                val manager = managers[index]
+                if (manager is AbstractColorManager) {
+                    managers[index] = AbstractColorManagerCSS3ColorFix(manager)
+                }
+            }
+        }
+    }
+}
+
+class AbstractColorManagerCSS3ColorFix(
+    private val original: AbstractColorManager,
+): AbstractColorManager() {
+    init {
+        values.put("transparent", StringValue(CSSPrimitiveValue.CSS_IDENT, "transparent"))
+        computedValues.put("transparent", RGBAColorValue(NUMBER_0, NUMBER_0, NUMBER_0, NUMBER_0))
+    }
+
+    override fun createValue(lu: LexicalUnit, engine: CSSEngine): Value {
+        return if ((lu.lexicalUnitType == LexicalUnit.SAC_FUNCTION) &&
+            lu.functionName.equals("rgba", ignoreCase = true)) {
+            var p = lu.parameters
+            val red = createColorComponent(p)
+            p = p.nextLexicalUnit.nextLexicalUnit
+            val green = createColorComponent(p)
+            p = p.nextLexicalUnit.nextLexicalUnit
+            val blue = createColorComponent(p)
+            p = p.nextLexicalUnit.nextLexicalUnit
+            val alpha = createColorComponent(p)
+            return RGBAColorValue(red, green, blue, alpha)
+        } else original.createValue(lu, engine)
+    }
+
+    override fun computeValue(
+        elt: CSSStylableElement?,
+        pseudo: String?,
+        engine: CSSEngine?,
+        idx: Int,
+        sm: StyleMap?,
+        value: Value?,
+    ): Value = original.computeValue(elt, pseudo, engine, idx, sm, value)
+
+    override fun getPropertyName(): String = original.propertyName
+
+    override fun isInheritedProperty(): Boolean = original.isInheritedProperty
+
+    override fun isAnimatableProperty(): Boolean = original.isAnimatableProperty
+
+    override fun isAdditiveProperty(): Boolean = original.isAdditiveProperty
+
+    override fun getPropertyType(): Int = original.propertyType
+
+    override fun getDefaultValue(): Value = original.defaultValue
+}
+
+class RGBAColorValue(
+    private val r: Value,
+    private val g: Value,
+    private val b: Value,
+    private val a: Value,
+) : AbstractValue() {
+    override fun getPrimitiveType(): Short {
+        return CSSPrimitiveValue.CSS_RGBCOLOR
+    }
+
+    override fun getCssText(): String {
+        return "rgba(${r.cssText}, ${g.cssText}, ${b.cssText}, ${a.cssText})"
+    }
+
+    override fun getRed(): Value {
+        return r
+    }
+
+    override fun getGreen(): Value {
+        return g
+    }
+
+    override fun getBlue(): Value {
+        return b
+    }
+
+    val alpha: Value get() = a
+
+    override fun toString(): String {
+        return cssText
     }
 }
