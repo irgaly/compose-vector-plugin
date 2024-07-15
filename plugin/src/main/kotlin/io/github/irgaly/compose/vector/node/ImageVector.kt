@@ -29,6 +29,7 @@ data class ImageVector(
             val scaleY: Float? = null,
             val translationX: Float? = null,
             val translationY: Float? = null,
+            val currentTransformationMatrix: Matrix = Matrix(1f, 0f, 0f, 1f, 0f, 0f),
             val clipPathData: List<PathNode> = emptyList(),
             val extra: Extra? = null,
             val referencedExtra: Extra? = null,
@@ -218,5 +219,24 @@ data class ImageVector(
         data class VerticalTo(
             val y: Float,
         ) : PathNode
+    }
+    data class Matrix(
+        val a: Float,
+        val b: Float,
+        val c: Float,
+        val d: Float,
+        val e: Float,
+        val f: Float,
+    ) {
+        companion object {
+            val identityMatrix = Matrix(
+                a = 1f,
+                b = 0f,
+                c = 0f,
+                d = 1f,
+                e = 0f,
+                f = 0f,
+            )
+        }
     }
 }

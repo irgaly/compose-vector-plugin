@@ -34,12 +34,23 @@ import org.apache.batik.css.parser.LexicalUnits
 import org.apache.batik.css.parser.Parser
 import org.apache.batik.dom.AbstractStylableDocument
 import org.apache.batik.dom.GenericAttr
+import org.apache.batik.dom.svg.SVGAnimatedPathDataSupport
+import org.apache.batik.gvt.ShapeNode
+import org.apache.batik.parser.PathHandler
+import org.apache.batik.parser.PathParser
 import org.apache.batik.svggen.SVGColor
+import org.apache.batik.svggen.SVGGeneratorContext
+import org.apache.batik.svggen.SVGPath
 import org.apache.batik.util.XMLResourceDescriptor
 import org.w3c.css.sac.LexicalUnit
 import org.w3c.dom.DOMImplementation
+import org.w3c.dom.Document
 import org.w3c.dom.css.CSSPrimitiveValue
 import org.w3c.dom.css.CSSStyleDeclaration
+import org.w3c.dom.svg.SVGMatrix
+import org.w3c.dom.svg.SVGPathSegList
+import java.awt.Shape
+import java.awt.geom.AffineTransform
 import java.io.IOException
 import java.io.InputStream
 import kotlin.reflect.KProperty
@@ -59,9 +70,8 @@ class SvgParser {
             ).createDocument("xml", input) as SVGOMDocument
         } catch (error: IOException) {
             throw error
-        }.apply {
-            initializeSvgCssEngine()
         }
+        val bridgeContext = document.initializeSvgCssEngine()
         val svg = (document.rootElement as SVGOMSVGElement).apply {
             mergeStyle()
         }
@@ -95,6 +105,7 @@ class SvgParser {
             translationX = if (viewBoxX != 0f) -viewBoxX else null,
             // translate by viewBoxY
             translationY = if (viewBoxY != 0f) -viewBoxY else null,
+            currentTransformationMatrix = svg.ctm.toMatrix(),
             extra = rootExtra
         )
         val groups = mutableListOf(Triple(rootGroup, mutableListOf<ImageVector.VectorNode>(), mutableSetOf<KProperty<*>>()))
@@ -109,7 +120,7 @@ class SvgParser {
                         val group = ImageVector.VectorNode.VectorGroup(
                             nodes = emptyList(),
                             name = element.xmlId.ifEmpty { null },
-                            // TODO: implement translation
+                            currentTransformationMatrix = element.ctm.toMatrix(),
                             // TODO: implement clipPath
                             extra = extra
                         )
@@ -117,6 +128,7 @@ class SvgParser {
                     }
 
                     is SVGOMPathElement -> {
+                        val currentGroup = groups.last()
                         val fill = element.style.getColor("fill")?.toBrush()
                         val fillAlpha = element.style.getNullablePropertyValue("fill-opacity")?.toFloat()
                         val stroke = element.style.getColor("stroke")?.toBrush()
@@ -181,9 +193,22 @@ class SvgParser {
                                 strokeLineJoinId = strokeLineJoinId,
                             )
                         } else null
-                        groups.last().second.add(
+                        val transform = AffineTransform().apply {
+                            concatenate(currentGroup.first.currentTransformationMatrix.toAffineTransform())
+                            concatenate(rootGroup.currentTransformationMatrix.toAffineTransform().createInverse())
+                        }
+                        val pathData = if (transform.isIdentity) {
+                            // keep original path commands, if possible.
+                            element.pathSegList.toPathData()
+                        } else {
+                            // path commands are simplified by AWT Shape compatible (AWTPathProducer)
+                            val shape = (bridgeContext.getGraphicsNode(element) as ShapeNode).shape
+                            val transformedShape = transform.createTransformedShape(shape)
+                            document.toPathData(transformedShape)
+                        }
+                        currentGroup.second.add(
                             ImageVector.VectorNode.VectorPath(
-                                pathData = emptyList(),
+                                pathData = pathData,
                                 pathFillType = null,
                                 name = element.xmlId.ifEmpty { null },
                                 fill = fill,
@@ -253,7 +278,7 @@ class SvgParser {
                         0f,
                         0f,
                         0f,
-                        listOf(
+                        clipPathData = listOf(
                             ImageVector.PathNode.HorizontalTo(10f),
                             ImageVector.PathNode.VerticalTo(99f)
                         )
@@ -286,7 +311,7 @@ class SvgParser {
                 0f,
                 0f,
                 0f,
-                listOf(
+                clipPathData = listOf(
                     ImageVector.PathNode.HorizontalTo(10f),
                     ImageVector.PathNode.VerticalTo(99f)
                 ),
@@ -350,7 +375,7 @@ class SvgParser {
  * * see https://stackoverflow.com/a/46845740/13403244
  * * see https://github.com/afester/CodeSamples/blob/b3ddb0efdd03713b0adf2d8488fc088dabfeea49/Java/JavaFXSample/src/com/example/svg/SVGDocumentLoader.java#L144
  */
-private fun SVGOMDocument.initializeSvgCssEngine() {
+private fun SVGOMDocument.initializeSvgCssEngine(): BridgeContext {
     val userAgent = object: UserAgentAdapter() {
         override fun displayMessage(message: String) {
             println(message)
@@ -363,6 +388,7 @@ private fun SVGOMDocument.initializeSvgCssEngine() {
     }
     ParserCSS3ColorFix.registerParser()
     GVTBuilder().build(bridgeContext, this)
+    return bridgeContext
 }
 
 private fun SVGOMElement.traverse(
@@ -829,5 +855,260 @@ class RGBAColorValue(
 
     override fun toString(): String {
         return cssText
+    }
+}
+
+fun SVGMatrix.toMatrix(): ImageVector.Matrix {
+    return ImageVector.Matrix(
+        a = a,
+        b = b,
+        c = c,
+        d = d,
+        e = e,
+        f = f
+    )
+}
+
+fun ImageVector.Matrix.toAffineTransform(): AffineTransform {
+    return AffineTransform(
+        a,
+        b,
+        c,
+        d,
+        e,
+        f,
+    )
+}
+
+fun Document.toPathData(shape: Shape): List<ImageVector.PathNode> {
+    val pathString = SVGPath.toSVGPathData(shape, SVGGeneratorContext.createDefault(this))
+    return PathDataPathHandler().also {
+        PathParser().apply {
+            pathHandler = it
+        }.parse(pathString)
+    }.getPath()
+}
+
+fun SVGPathSegList.toPathData(): List<ImageVector.PathNode> {
+    return PathDataPathHandler().also {
+        SVGAnimatedPathDataSupport.handlePathSegList(this, it)
+    }.getPath()
+}
+
+class PathDataPathHandler: PathHandler {
+    private val pathData = mutableListOf<ImageVector.PathNode>()
+
+    fun getPath(): List<ImageVector.PathNode> {
+        return pathData.toList()
+    }
+
+    override fun startPath() = Unit
+
+    override fun endPath() = Unit
+
+    override fun movetoRel(x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeMoveTo(
+                dx = x,
+                dy = y
+            )
+        )
+    }
+
+    override fun movetoAbs(x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.MoveTo(
+                x = x,
+                y = y
+            )
+        )
+    }
+
+    override fun closePath() {
+        pathData.add(
+            ImageVector.PathNode.Close
+        )
+    }
+
+    override fun linetoRel(x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeLineTo(
+                dx = x,
+                dy = y
+            )
+        )
+    }
+
+    override fun linetoAbs(x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.LineTo(
+                x = x,
+                y = y
+            )
+        )
+    }
+
+    override fun linetoHorizontalRel(x: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeHorizontalTo(
+                dx = x,
+            )
+        )
+    }
+
+    override fun linetoHorizontalAbs(x: Float) {
+        pathData.add(
+            ImageVector.PathNode.HorizontalTo(
+                x = x,
+            )
+        )
+    }
+
+    override fun linetoVerticalRel(y: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeVerticalTo(
+                dy = y,
+            )
+        )
+    }
+
+    override fun linetoVerticalAbs(y: Float) {
+        pathData.add(
+            ImageVector.PathNode.VerticalTo(
+                y = y,
+            )
+        )
+    }
+
+    override fun curvetoCubicRel(x1: Float, y1: Float, x2: Float, y2: Float, x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeCurveTo(
+                dx1 = x1,
+                dy1 = y1,
+                dx2 = x2,
+                dy2 = y2,
+                dx3 = x,
+                dy3 = y,
+            )
+        )
+    }
+
+    override fun curvetoCubicAbs(x1: Float, y1: Float, x2: Float, y2: Float, x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.CurveTo(
+                x1 = x1,
+                y1 = y1,
+                x2 = x2,
+                y2 = y2,
+                x3 = x,
+                y3 = y,
+            )
+        )
+    }
+
+    override fun curvetoCubicSmoothRel(x2: Float, y2: Float, x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeReflectiveCurveTo(
+                dx1 = x2,
+                dy1 = y2,
+                dx2 = x,
+                dy2 = y,
+            )
+        )
+    }
+
+    override fun curvetoCubicSmoothAbs(x2: Float, y2: Float, x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.ReflectiveCurveTo(
+                x1 = x2,
+                y1 = y2,
+                x2 = x,
+                y2 = y,
+            )
+        )
+    }
+
+    override fun curvetoQuadraticRel(x1: Float, y1: Float, x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeQuadTo(
+                dx1 = x1,
+                dy1 = y1,
+                dx2 = x,
+                dy2 = y,
+            )
+        )
+    }
+
+    override fun curvetoQuadraticAbs(x1: Float, y1: Float, x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.QuadTo(
+                x1 = x1,
+                y1 = y1,
+                x2 = x,
+                y2 = y,
+            )
+        )
+    }
+
+    override fun curvetoQuadraticSmoothRel(x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.RelativeReflectiveQuadTo(
+                dx = x,
+                dy = y,
+            )
+        )
+    }
+
+    override fun curvetoQuadraticSmoothAbs(x: Float, y: Float) {
+        pathData.add(
+            ImageVector.PathNode.ReflectiveQuadTo(
+                x = x,
+                y = y,
+            )
+        )
+    }
+
+    override fun arcRel(
+        rx: Float,
+        ry: Float,
+        xAxisRotation: Float,
+        largeArcFlag: Boolean,
+        sweepFlag: Boolean,
+        x: Float,
+        y: Float,
+    ) {
+        pathData.add(
+            ImageVector.PathNode.RelativeArcTo(
+                horizontalEllipseRadius = rx,
+                verticalEllipseRadius = ry,
+                theta = xAxisRotation,
+                isMoreThanHalf = largeArcFlag,
+                isPositiveArc = sweepFlag,
+                arcStartDx = x,
+                arcStartDy = y,
+            )
+        )
+    }
+
+    override fun arcAbs(
+        rx: Float,
+        ry: Float,
+        xAxisRotation: Float,
+        largeArcFlag: Boolean,
+        sweepFlag: Boolean,
+        x: Float,
+        y: Float,
+    ) {
+        pathData.add(
+            ImageVector.PathNode.ArcTo(
+                horizontalEllipseRadius = rx,
+                verticalEllipseRadius = ry,
+                theta = xAxisRotation,
+                isMoreThanHalf = largeArcFlag,
+                isPositiveArc = sweepFlag,
+                arcStartX = x,
+                arcStartY = y,
+            )
+        )
     }
 }
