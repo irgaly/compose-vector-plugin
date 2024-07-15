@@ -159,6 +159,7 @@ class SvgParser {
                         val strokeLineJoin =
                             element.style.getNullablePropertyValue("stroke-linejoin")
                                 ?.toStrokeJoin()
+                        val strokeLineMiter = element.style.getFloatPxValue("stroke-linemiter")
                         var fillId: String? = null
                         var fillAlphaId: String? = null
                         var strokeId: String? = null
@@ -166,6 +167,7 @@ class SvgParser {
                         var strokeLineWidthId: String? = null
                         var strokeLineCapId: String? = null
                         var strokeLineJoinId: String? = null
+                        var strokeLineMiterId: String? = null
                         groups.reversed().forEach { group ->
                             val extra = group.first.extra
                             if (extra != null) {
@@ -197,6 +199,10 @@ class SvgParser {
                                     strokeLineJoinId = extra.id
                                     group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)
                                 }
+                                if (strokeLineMiter == null && strokeLineMiterId == null && extra.strokeLineMiter != null) {
+                                    strokeLineMiterId = extra.id
+                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)
+                                }
                             }
                         }
                         val extraReference = if ((fillId != null) ||
@@ -205,7 +211,8 @@ class SvgParser {
                             (strokeAlphaId != null) ||
                             (strokeLineWidthId != null) ||
                             (strokeLineCapId != null) ||
-                            (strokeLineJoinId != null)
+                            (strokeLineJoinId != null) ||
+                            (strokeLineMiterId != null)
                         ) {
                             ImageVector.VectorNode.VectorPath.ExtraReference(
                                 fillId = fillId,
@@ -215,6 +222,7 @@ class SvgParser {
                                 strokeLineWidthId = strokeLineWidthId,
                                 strokeLineCapId = strokeLineCapId,
                                 strokeLineJoinId = strokeLineJoinId,
+                                strokeLineMiterId = strokeLineMiterId,
                             )
                         } else null
                         val transform = AffineTransform().apply {
@@ -252,7 +260,7 @@ class SvgParser {
                                 strokeLineWidth = strokeLineWidth,
                                 strokeLineCap = strokeLineCap,
                                 strokeLineJoin = strokeLineJoin,
-                                strokeLineMiter = null,
+                                strokeLineMiter = strokeLineMiter,
                                 trimPathStart = null,
                                 trimPathEnd = null,
                                 trimPathOffset = null,
@@ -281,6 +289,7 @@ class SvgParser {
                                 strokeLineWidth = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)) extra.strokeLineWidth else null,
                                 strokeLineCap = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)) extra.strokeLineCap else null,
                                 strokeLineJoin = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)) extra.strokeLineJoin else null,
+                                strokeLineMiter = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)) extra.strokeLineMiter else null,
                             )
                         } else null
                         parent.second.add(
@@ -311,6 +320,7 @@ class SvgParser {
                 strokeLineWidth = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)) extra.strokeLineWidth else null,
                 strokeLineCap = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)) extra.strokeLineCap else null,
                 strokeLineJoin = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)) extra.strokeLineJoin else null,
+                strokeLineMiter = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)) extra.strokeLineMiter else null,
             )
         } else null
         rootGroup = groups.last().first.copy(
@@ -381,13 +391,15 @@ private fun SVGStylableElement.getStyleExtra(
     val strokeLineWidth = style.getFloatPxValue("stroke-width")
     val strokeLineCap = style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
     val strokeLineJoin = style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
-    if (fill != null ||
-        fillAlpha != null ||
-        stroke != null ||
-        strokeAlpha != null ||
-        strokeLineWidth != null ||
-        strokeLineCap != null ||
-        strokeLineJoin != null
+    val strokeLineMiter = style.getNullablePropertyValue("stroke-miterlimit")?.toFloat()
+    if ((fill != null) ||
+        (fillAlpha != null) ||
+        (stroke != null) ||
+        (strokeAlpha != null) ||
+        (strokeLineWidth != null) ||
+        (strokeLineCap != null) ||
+        (strokeLineJoin != null) ||
+        (strokeLineMiter != null)
     ) {
         extra = ImageVector.VectorNode.VectorGroup.Extra(
             id = extraId,
@@ -397,7 +409,8 @@ private fun SVGStylableElement.getStyleExtra(
             strokeAlpha = strokeAlpha,
             strokeLineWidth = strokeLineWidth,
             strokeLineCap = strokeLineCap,
-            strokeLineJoin = strokeLineJoin
+            strokeLineJoin = strokeLineJoin,
+            strokeLineMiter = strokeLineMiter,
         )
     }
     return extra
@@ -583,6 +596,7 @@ private fun SVGStylableElement.mergeStyle() {
         "stroke-width",
         "stroke-linecap",
         "stroke-linejoin",
+        "stroke-miterlimit",
         "fill",
         "fill-opacity",
     ).forEach { name ->

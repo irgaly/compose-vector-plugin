@@ -43,6 +43,7 @@ data class ImageVector(
                 val strokeLineWidth: Float? = null,
                 val strokeLineCap: StrokeCap? = null,
                 val strokeLineJoin: StrokeJoin? = null,
+                val strokeLineMiter: Float? = null,
             )
         }
 
@@ -71,6 +72,7 @@ data class ImageVector(
                 val strokeLineWidthId: String? = null,
                 val strokeLineCapId: String? = null,
                 val strokeLineJoinId: String? = null,
+                val strokeLineMiterId: String? = null,
             )
         }
     }

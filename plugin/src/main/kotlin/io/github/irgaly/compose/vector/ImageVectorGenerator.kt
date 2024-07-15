@@ -211,7 +211,11 @@ class ImageVectorGenerator {
                                         } else if (node.strokeLineJoin != null) {
                                             add { add("strokeLineJoin = %M.%L", MemberNames.StrokeJoin, node.strokeLineJoin.name) }
                                         }
-                                        if (node.strokeLineMiter != null) {
+                                        if (node.extraReference?.strokeLineMiterId != null) {
+                                            add {
+                                                add("strokeLineMiter = strokeLineMiter${node.extraReference.strokeLineMiterId}")
+                                            }
+                                        } else if (node.strokeLineMiter != null) {
                                             add { add("strokeLineMiter = %Lf", node.strokeLineMiter) }
                                         }
                                         if (node.trimPathStart != null) {
@@ -314,6 +318,12 @@ class ImageVectorGenerator {
                 "val strokeLineJoin${referencedExtra.id} = %M.%L",
                 MemberNames.StrokeJoin,
                 referencedExtra.strokeLineJoin.name
+            )
+        }
+        if (referencedExtra.strokeLineMiter != null) {
+            addStatement(
+                "val strokeLineMiter${referencedExtra.id} = %Lf",
+                referencedExtra.strokeLineMiter
             )
         }
     }
