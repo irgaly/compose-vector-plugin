@@ -32,6 +32,10 @@ val svg = """
   <g stroke="red" />
   <path
     d="M280-200v-80h284q63 0 109.5-40T720-420q0-60-46.5-100T564-560H312l104 104-56 56-200-200 200-200 56 56-104 104h252q97 0 166.5 63T800-420q0 94-69.5 157T564-200H280Z" />
-    -->
+  <clipPath id="clip1">
+      <rect x="15" y="15" rx="5" ry="5" width="40" height="40" />
+  </clipPath>
+  <circle cx="25" cy="25" r="20"
+          style="fill: #0000ff; clip-path: url(#clip1); " />
 </svg>
 """

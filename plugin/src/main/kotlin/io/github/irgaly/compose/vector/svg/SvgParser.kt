@@ -3,12 +3,19 @@ package io.github.irgaly.compose.vector.svg
 import io.github.irgaly.compose.vector.node.ImageVector
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
 import org.apache.batik.anim.dom.SVG12DOMImplementation
+import org.apache.batik.anim.dom.SVGGraphicsElement
 import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
+import org.apache.batik.anim.dom.SVGOMCircleElement
 import org.apache.batik.anim.dom.SVGOMDocument
 import org.apache.batik.anim.dom.SVGOMElement
+import org.apache.batik.anim.dom.SVGOMEllipseElement
 import org.apache.batik.anim.dom.SVGOMGElement
+import org.apache.batik.anim.dom.SVGOMLineElement
 import org.apache.batik.anim.dom.SVGOMPathElement
+import org.apache.batik.anim.dom.SVGOMPolygonElement
+import org.apache.batik.anim.dom.SVGOMPolylineElement
+import org.apache.batik.anim.dom.SVGOMRectElement
 import org.apache.batik.anim.dom.SVGOMSVGElement
 import org.apache.batik.anim.dom.SVGStylableElement
 import org.apache.batik.bridge.BridgeContext
@@ -35,6 +42,7 @@ import org.apache.batik.css.parser.Parser
 import org.apache.batik.dom.AbstractStylableDocument
 import org.apache.batik.dom.GenericAttr
 import org.apache.batik.dom.svg.SVGAnimatedPathDataSupport
+import org.apache.batik.gvt.GraphicsNode
 import org.apache.batik.gvt.ShapeNode
 import org.apache.batik.parser.PathHandler
 import org.apache.batik.parser.PathParser
@@ -111,6 +119,8 @@ class SvgParser {
         val groups = mutableListOf(Triple(rootGroup, mutableListOf<ImageVector.VectorNode>(), mutableSetOf<KProperty<*>>()))
         svg.traverse(
             onElementBegin = { element ->
+                val graphicsNode: GraphicsNode? = bridgeContext.getGraphicsNode(element)
+                val clipPathShape = graphicsNode?.clip?.clipPath
                 when (element) {
                     is SVGOMGElement -> {
                         val extra = element.getStyleExtra(extraId = extraId.toString())
@@ -127,15 +137,28 @@ class SvgParser {
                         groups.add(Triple(group, mutableListOf(), mutableSetOf()))
                     }
 
-                    is SVGOMPathElement -> {
+                    is SVGOMPathElement,
+                    is SVGOMRectElement,
+                    is SVGOMCircleElement,
+                    is SVGOMEllipseElement,
+                    is SVGOMLineElement,
+                    is SVGOMPolylineElement,
+                    is SVGOMPolygonElement,
+                    -> {
+                        check(element is SVGGraphicsElement)
                         val currentGroup = groups.last()
                         val fill = element.style.getColor("fill")?.toBrush()
-                        val fillAlpha = element.style.getNullablePropertyValue("fill-opacity")?.toFloat()
+                        val fillAlpha =
+                            element.style.getNullablePropertyValue("fill-opacity")?.toFloat()
                         val stroke = element.style.getColor("stroke")?.toBrush()
-                        val strokeAlpha = element.style.getNullablePropertyValue("stroke-opacity")?.toFloat()
+                        val strokeAlpha =
+                            element.style.getNullablePropertyValue("stroke-opacity")?.toFloat()
                         val strokeLineWidth = element.style.getFloatPxValue("stroke-width")
-                        val strokeLineCap = element.style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
-                        val strokeLineJoin = element.style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
+                        val strokeLineCap =
+                            element.style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
+                        val strokeLineJoin =
+                            element.style.getNullablePropertyValue("stroke-linejoin")
+                                ?.toStrokeJoin()
                         var fillId: String? = null
                         var fillAlphaId: String? = null
                         var strokeId: String? = null
@@ -182,7 +205,8 @@ class SvgParser {
                             (strokeAlphaId != null) ||
                             (strokeLineWidthId != null) ||
                             (strokeLineCapId != null) ||
-                            (strokeLineJoinId != null)) {
+                            (strokeLineJoinId != null)
+                        ) {
                             ImageVector.VectorNode.VectorPath.ExtraReference(
                                 fillId = fillId,
                                 fillAlphaId = fillAlphaId,
@@ -195,14 +219,24 @@ class SvgParser {
                         } else null
                         val transform = AffineTransform().apply {
                             concatenate(currentGroup.first.currentTransformationMatrix.toAffineTransform())
-                            concatenate(rootGroup.currentTransformationMatrix.toAffineTransform().createInverse())
+                            concatenate(
+                                rootGroup.currentTransformationMatrix.toAffineTransform()
+                                    .createInverse()
+                            )
                         }
+                        val shape = (graphicsNode as ShapeNode).shape
                         val pathData = if (transform.isIdentity) {
-                            // keep original path commands, if possible.
-                            element.pathSegList.toPathData()
+                            when (element) {
+                                is SVGOMPathElement -> {
+                                    // keep original path commands, if possible.
+                                    element.pathSegList.toPathData()
+                                }
+                                else -> {
+                                    document.toPathData(shape)
+                                }
+                            }
                         } else {
                             // path commands are simplified by AWT Shape compatible (AWTPathProducer)
-                            val shape = (bridgeContext.getGraphicsNode(element) as ShapeNode).shape
                             val transformedShape = transform.createTransformedShape(shape)
                             document.toPathData(transformedShape)
                         }
