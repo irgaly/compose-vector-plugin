@@ -123,6 +123,13 @@ class SvgParser {
                 val clipPathShape = graphicsNode?.clip?.clipPath
                 when (element) {
                     is SVGOMGElement -> {
+                        val transform = AffineTransform().apply {
+                            concatenate(element.ctm.toMatrix().toAffineTransform())
+                            concatenate(
+                                rootGroup.currentTransformationMatrix.toAffineTransform()
+                                    .createInverse()
+                            )
+                        }
                         val extra = element.getStyleExtra(extraId = extraId.toString())
                         if (extra != null) {
                             extraId++
@@ -131,7 +138,10 @@ class SvgParser {
                             nodes = emptyList(),
                             name = element.xmlId.ifEmpty { null },
                             currentTransformationMatrix = element.ctm.toMatrix(),
-                            // TODO: implement clipPath
+                            clipPathData = clipPathShape?.let {
+                                val transformedClipPathShape = transform.createTransformedShape(it)
+                                document.toPathData(transformedClipPathShape)
+                            } ?: emptyList(),
                             extra = extra
                         )
                         groups.add(Triple(group, mutableListOf(), mutableSetOf()))
@@ -146,7 +156,24 @@ class SvgParser {
                     is SVGOMPolygonElement,
                     -> {
                         check(element is SVGGraphicsElement)
-                        val currentGroup = groups.last()
+                        val transform = AffineTransform().apply {
+                            concatenate(groups.last().first.currentTransformationMatrix.toAffineTransform())
+                            concatenate(
+                                rootGroup.currentTransformationMatrix.toAffineTransform()
+                                    .createInverse()
+                            )
+                        }
+                        if (clipPathShape != null) {
+                            // Wrap single element by group for clip path
+                            val group = ImageVector.VectorNode.VectorGroup(
+                                nodes = emptyList(),
+                                currentTransformationMatrix = element.ctm.toMatrix(),
+                                clipPathData = transform.createTransformedShape(clipPathShape).let {
+                                    document.toPathData(it)
+                                },
+                            )
+                            groups.add(Triple(group, mutableListOf(), mutableSetOf()))
+                        }
                         val fill = element.style.getColor("fill")?.toBrush()
                         val fillAlpha =
                             element.style.getNullablePropertyValue("fill-opacity")?.toFloat()
@@ -225,13 +252,6 @@ class SvgParser {
                                 strokeLineMiterId = strokeLineMiterId,
                             )
                         } else null
-                        val transform = AffineTransform().apply {
-                            concatenate(currentGroup.first.currentTransformationMatrix.toAffineTransform())
-                            concatenate(
-                                rootGroup.currentTransformationMatrix.toAffineTransform()
-                                    .createInverse()
-                            )
-                        }
                         val shape = (graphicsNode as ShapeNode).shape
                         val pathData = if (transform.isIdentity) {
                             when (element) {
@@ -248,7 +268,7 @@ class SvgParser {
                             val transformedShape = transform.createTransformedShape(shape)
                             document.toPathData(transformedShape)
                         }
-                        currentGroup.second.add(
+                        groups.last().second.add(
                             ImageVector.VectorNode.VectorPath(
                                 pathData = pathData,
                                 pathFillType = null,
@@ -267,6 +287,16 @@ class SvgParser {
                                 extraReference = extraReference
                             )
                         )
+                        if (clipPathShape != null) {
+                            // close clip path group
+                            val group = groups.removeLast()
+                            val parent = groups.last()
+                            parent.second.add(
+                                group.first.copy(
+                                    nodes = group.second.toList(),
+                                )
+                            )
+                        }
                     }
 
                     else -> {}
