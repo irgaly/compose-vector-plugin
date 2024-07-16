@@ -138,17 +138,28 @@ class ImageVectorGenerator {
                                     endControlFlow()
                                 },
                                 onPath = { node ->
-                                    add("addPath(")
+                                    val useTrim = ((node.trimPathStart != null) ||
+                                            (node.trimPathEnd != null) ||
+                                            (node.trimPathOffset != null))
+                                    if (useTrim) {
+                                        add("addPath(")
+                                    } else {
+                                        add("%M(", MemberNames.Vector.Path)
+                                    }
                                     buildList<CodeBlock.Builder.() -> Unit> {
-                                        add {
-                                            add(/* pathData = */ "%M {\n", MemberNames.Vector.PathData)
-                                            indent()
-                                            node.pathData.forEach { pathNode ->
-                                                add(pathNode.toCodeBlock())
-                                                add("\n")
+                                        if (useTrim) {
+                                            add {
+                                                add(/* pathData = */ "%M {\n",
+                                                    MemberNames.Vector.PathData
+                                                )
+                                                indent()
+                                                node.pathData.forEach { pathNode ->
+                                                    add(pathNode.toCodeBlock())
+                                                    add("\n")
+                                                }
+                                                unindent()
+                                                add("}")
                                             }
-                                            unindent()
-                                            add("}")
                                         }
                                         if (node.pathFillType != null) {
                                             add { add("pathFillType = %M.%L", MemberNames.PathFillType, node.pathFillType.name) }
@@ -233,7 +244,16 @@ class ImageVectorGenerator {
                                         }
                                         block()
                                     }
-                                    addStatement(")")
+                                    if (useTrim) {
+                                        addStatement(")")
+                                    } else {
+                                        beginControlFlow(")")
+                                        node.pathData.forEach { pathNode ->
+                                            add(pathNode.toCodeBlock())
+                                            add("\n")
+                                        }
+                                        endControlFlow()
+                                    }
                                 }
                             )
                             unindent()
