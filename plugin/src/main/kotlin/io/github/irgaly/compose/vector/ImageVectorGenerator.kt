@@ -61,12 +61,12 @@ class ImageVectorGenerator {
                                 backingProperty,
                                 MemberNames.ImageVector.Builder,
                                 imageVector.name,
-                                imageVector.defaultWidth,
+                                imageVector.defaultWidth.toShortValueString(),
                                 MemberNames.Dp,
-                                imageVector.defaultHeight,
+                                imageVector.defaultHeight.toShortValueString(),
                                 MemberNames.Dp,
-                                imageVector.viewportWidth,
-                                imageVector.viewportHeight,
+                                imageVector.viewportWidth.toShortValueString(),
+                                imageVector.viewportHeight.toShortValueString(),
                             )
                             indent()
                             // TODO: use タグを fun で再現する
@@ -85,25 +85,25 @@ class ImageVectorGenerator {
                                             add { add("name = %S", node.name) }
                                         }
                                         if (node.rotate != null) {
-                                            add { add("rotate = %Lf", node.rotate) }
+                                            add { add("rotate = %Lf", node.rotate.toShortValueString()) }
                                         }
                                         if (node.pivotX != null) {
-                                            add { add("pivotX = %Lf", node.pivotX) }
+                                            add { add("pivotX = %Lf", node.pivotX.toShortValueString()) }
                                         }
                                         if (node.pivotY != null) {
-                                            add { add("pivotY = %Lf", node.pivotY) }
+                                            add { add("pivotY = %Lf", node.pivotY.toShortValueString()) }
                                         }
                                         if (node.scaleX != null) {
-                                            add { add("scaleX = %Lf", node.scaleX) }
+                                            add { add("scaleX = %Lf", node.scaleX.toShortValueString()) }
                                         }
                                         if (node.scaleY != null) {
-                                            add { add("scaleY = %Lf", node.scaleY) }
+                                            add { add("scaleY = %Lf", node.scaleY.toShortValueString()) }
                                         }
                                         if (node.translationX != null) {
-                                            add { add("translationX = %Lf", node.translationX) }
+                                            add { add("translationX = %Lf", node.translationX.toShortValueString()) }
                                         }
                                         if (node.translationY != null) {
-                                            add { add("translationY = %Lf", node.translationY) }
+                                            add { add("translationY = %Lf", node.translationY.toShortValueString()) }
                                         }
                                         if (node.clipPathData.isNotEmpty()) {
                                             add {
@@ -171,7 +171,7 @@ class ImageVectorGenerator {
                                                 add("fillAlpha = fillAlpha${node.extraReference.fillAlphaId}")
                                             }
                                         } else if (node.fillAlpha != null) {
-                                            add { add("fillAlpha = %Lf", node.fillAlpha) }
+                                            add { add("fillAlpha = %Lf", node.fillAlpha.toShortValueString()) }
                                         }
                                         if (node.extraReference?.strokeId != null) {
                                             add {
@@ -188,14 +188,14 @@ class ImageVectorGenerator {
                                                 add("strokeAlpha = strokeAlpha${node.extraReference.strokeAlphaId}")
                                             }
                                         } else if (node.strokeAlpha != null) {
-                                            add { add("strokeAlpha = %Lf", node.strokeAlpha) }
+                                            add { add("strokeAlpha = %Lf", node.strokeAlpha.toShortValueString()) }
                                         }
                                         if (node.extraReference?.strokeLineWidthId != null) {
                                             add {
                                                 add("strokeLineWidth = strokeLineWidth${node.extraReference.strokeLineWidthId}")
                                             }
                                         } else if (node.strokeLineWidth != null) {
-                                            add { add("strokeLineWidth = %Lf", node.strokeLineWidth) }
+                                            add { add("strokeLineWidth = %Lf", node.strokeLineWidth.toShortValueString()) }
                                         }
                                         if (node.extraReference?.strokeLineCapId != null) {
                                             add {
@@ -216,7 +216,7 @@ class ImageVectorGenerator {
                                                 add("strokeLineMiter = strokeLineMiter${node.extraReference.strokeLineMiterId}")
                                             }
                                         } else if (node.strokeLineMiter != null) {
-                                            add { add("strokeLineMiter = %Lf", node.strokeLineMiter) }
+                                            add { add("strokeLineMiter = %Lf", node.strokeLineMiter.toShortValueString()) }
                                         }
                                         if (node.trimPathStart != null) {
                                             add { add("trimPathStart = %Lf", node.trimPathStart) }
@@ -286,7 +286,7 @@ class ImageVectorGenerator {
         if (referencedExtra.fillAlpha != null) {
             addStatement(
                 "val fillAlpha${referencedExtra.id} = %Lf",
-                referencedExtra.fillAlpha
+                referencedExtra.fillAlpha.toShortValueString()
             )
         }
         if (referencedExtra.stroke != null) {
@@ -297,13 +297,13 @@ class ImageVectorGenerator {
         if (referencedExtra.strokeAlpha != null) {
             addStatement(
                 "val strokeAlpha${referencedExtra.id} = %Lf",
-                referencedExtra.strokeAlpha
+                referencedExtra.strokeAlpha.toShortValueString()
             )
         }
         if (referencedExtra.strokeLineWidth != null) {
             addStatement(
                 "val strokeLineWidth${referencedExtra.id} = %Lf",
-                referencedExtra.strokeLineWidth
+                referencedExtra.strokeLineWidth.toShortValueString()
             )
         }
         if (referencedExtra.strokeLineCap != null) {
@@ -323,7 +323,7 @@ class ImageVectorGenerator {
         if (referencedExtra.strokeLineMiter != null) {
             addStatement(
                 "val strokeLineMiter${referencedExtra.id} = %Lf",
-                referencedExtra.strokeLineMiter
+                referencedExtra.strokeLineMiter.toShortValueString()
             )
         }
     }
@@ -360,18 +360,18 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* horizontalEllipseRadius = */ "%Lf, " +
                             /* verticalEllipseRadius = */ "%Lf, " +
                             /* theta = */ "%Lf, " +
-                            /* isMoreThanHalf = */ "%Lf, " +
-                            /* isPositiveArc = */ "%Lf, " +
+                            /* isMoreThanHalf = */ "%L, " +
+                            /* isPositiveArc = */ "%L, " +
                             /* x1 = */ "%Lf, " +
                             /* y1 = */ "%Lf" +
                             ")",
-                    horizontalEllipseRadius,
-                    verticalEllipseRadius,
-                    theta,
+                    horizontalEllipseRadius.toShortValueString(),
+                    verticalEllipseRadius.toShortValueString(),
+                    theta.toShortValueString(),
                     isMoreThanHalf,
                     isPositiveArc,
-                    arcStartX,
-                    arcStartY
+                    arcStartX.toShortValueString(),
+                    arcStartY.toShortValueString()
                 )
             }
 
@@ -389,12 +389,12 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* x3 = */ "%Lf, " +
                             /* y3 = */ "%Lf" +
                             ")",
-                    x1,
-                    y1,
-                    x2,
-                    y2,
-                    x3,
-                    y3
+                    x1.toShortValueString(),
+                    y1.toShortValueString(),
+                    x2.toShortValueString(),
+                    y2.toShortValueString(),
+                    x3.toShortValueString(),
+                    y3.toShortValueString()
                 )
             }
 
@@ -403,7 +403,7 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                     "horizontalLineTo(" +
                             /* x = */ "%Lf" +
                             ")",
-                    x
+                    x.toShortValueString()
                 )
             }
 
@@ -413,8 +413,8 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* x = */ "%Lf, " +
                             /* y = */ "%Lf" +
                             ")",
-                    x,
-                    y
+                    x.toShortValueString(),
+                    y.toShortValueString()
                 )
             }
 
@@ -424,8 +424,8 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* x = */ "%Lf, " +
                             /* y = */ "%Lf" +
                             ")",
-                    x,
-                    y
+                    x.toShortValueString(),
+                    y.toShortValueString()
                 )
             }
 
@@ -437,10 +437,10 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* x2 = */ "%Lf, " +
                             /* y2 = */ "%Lf" +
                             ")",
-                    x1,
-                    y1,
-                    x2,
-                    y2
+                    x1.toShortValueString(),
+                    y1.toShortValueString(),
+                    x2.toShortValueString(),
+                    y2.toShortValueString()
                 )
             }
 
@@ -452,10 +452,10 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* x2 = */ "%Lf, " +
                             /* y2 = */ "%Lf" +
                             ")",
-                    x1,
-                    y1,
-                    x2,
-                    y2
+                    x1.toShortValueString(),
+                    y1.toShortValueString(),
+                    x2.toShortValueString(),
+                    y2.toShortValueString()
                 )
             }
 
@@ -465,8 +465,8 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* x = */ "%Lf, " +
                             /* y = */ "%Lf" +
                             ")",
-                    x,
-                    y
+                    x.toShortValueString(),
+                    y.toShortValueString()
                 )
             }
 
@@ -476,18 +476,18 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* a = */ "%Lf, " +
                             /* b = */ "%Lf, " +
                             /* theta = */ "%Lf, " +
-                            /* isMoreThanHalf = */ "%Lf, " +
-                            /* isPositiveArc = */ "%Lf, " +
+                            /* isMoreThanHalf = */ "%L, " +
+                            /* isPositiveArc = */ "%L, " +
                             /* dx1 = */ "%Lf, " +
                             /* dy1 = */ "%Lf" +
                             ")",
-                    horizontalEllipseRadius,
-                    verticalEllipseRadius,
-                    theta,
+                    horizontalEllipseRadius.toShortValueString(),
+                    verticalEllipseRadius.toShortValueString(),
+                    theta.toShortValueString(),
                     isMoreThanHalf,
                     isPositiveArc,
-                    arcStartDx,
-                    arcStartDy
+                    arcStartDx.toShortValueString(),
+                    arcStartDy.toShortValueString()
                 )
             }
 
@@ -501,12 +501,12 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* dx3 = */ "%Lf, " +
                             /* dy3 = */ "%Lf" +
                             ")",
-                    dx1,
-                    dy1,
-                    dx2,
-                    dy2,
-                    dx3,
-                    dy3
+                    dx1.toShortValueString(),
+                    dy1.toShortValueString(),
+                    dx2.toShortValueString(),
+                    dy2.toShortValueString(),
+                    dx3.toShortValueString(),
+                    dy3.toShortValueString()
                 )
             }
 
@@ -515,7 +515,7 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                     "horizontalLineToRelative(" +
                             /* dx = */ "%Lf" +
                             ")",
-                    dx
+                    dx.toShortValueString()
                 )
             }
 
@@ -525,8 +525,8 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* dx = */ "%Lf, " +
                             /* dy = */ "%Lf" +
                             ")",
-                    dx,
-                    dy
+                    dx.toShortValueString(),
+                    dy.toShortValueString()
                 )
             }
 
@@ -536,8 +536,8 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* dx = */ "%Lf, " +
                             /* dy= */ "%Lf" +
                             ")",
-                    dx,
-                    dy
+                    dx.toShortValueString(),
+                    dy.toShortValueString()
                 )
             }
 
@@ -549,10 +549,10 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* dx2 = */ "%Lf, " +
                             /* dy2 = */ "%Lf" +
                             ")",
-                    dx1,
-                    dy1,
-                    dx2,
-                    dy2
+                    dx1.toShortValueString(),
+                    dy1.toShortValueString(),
+                    dx2.toShortValueString(),
+                    dy2.toShortValueString()
                 )
             }
 
@@ -564,10 +564,10 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* dx2 = */ "%Lf, " +
                             /* dy2 = */ "%Lf" +
                             ")",
-                    dx1,
-                    dy1,
-                    dx2,
-                    dy2
+                    dx1.toShortValueString(),
+                    dy1.toShortValueString(),
+                    dx2.toShortValueString(),
+                    dy2.toShortValueString()
                 )
             }
 
@@ -577,8 +577,8 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                             /* dx = */ "%Lf, " +
                             /* dy = */ "%Lf" +
                             ")",
-                    dx,
-                    dy
+                    dx.toShortValueString(),
+                    dy.toShortValueString()
                 )
             }
 
@@ -587,7 +587,7 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                     "verticalLineToRelative(" +
                             /* dy = */ "%Lf" +
                             ")",
-                    dy
+                    dy.toShortValueString()
                 )
             }
 
@@ -596,7 +596,7 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
                     "verticalLineTo(" +
                             /* y = */ "%Lf" +
                             ")",
-                    y
+                    y.toShortValueString()
                 )
             }
         }
@@ -628,4 +628,12 @@ fun ImageVector.Brush.toCodeBlock(): CodeBlock {
             }
         }
     }
+}
+
+/**
+ * 1.5 -> "1.5"
+ * 1.0 -> "1"
+ */
+fun Number.toShortValueString(): String {
+    return toString().replace("\\.0$".toRegex(), "")
 }
