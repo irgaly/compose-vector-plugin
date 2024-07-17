@@ -18,6 +18,7 @@ suspend fun main(@Suppress("UNUSED_PARAMETER") args: Array<String>) {
 val svg = """
 <svg
   xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
   height="24px"
   viewBox="0 -960 960 960"
   width="24px"
@@ -37,5 +38,9 @@ val svg = """
   </clipPath>
   <circle cx="25" cy="25" r="20"
           style="fill: #0000ff; clip-path: url(#clip1); " />
+  <g id="used1">
+      <circle cx="10" cy="10" r="10" />
+  </g>
+  <use href="#used1" />
 </svg>
 """

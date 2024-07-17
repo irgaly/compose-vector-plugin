@@ -17,10 +17,14 @@ import org.apache.batik.anim.dom.SVGOMPolygonElement
 import org.apache.batik.anim.dom.SVGOMPolylineElement
 import org.apache.batik.anim.dom.SVGOMRectElement
 import org.apache.batik.anim.dom.SVGOMSVGElement
+import org.apache.batik.anim.dom.SVGOMUseElement
 import org.apache.batik.anim.dom.SVGStylableElement
+import org.apache.batik.bridge.Bridge
 import org.apache.batik.bridge.BridgeContext
+import org.apache.batik.bridge.BridgeExtension
 import org.apache.batik.bridge.DocumentLoader
 import org.apache.batik.bridge.GVTBuilder
+import org.apache.batik.bridge.SVGUseElementBridge
 import org.apache.batik.bridge.UserAgentAdapter
 import org.apache.batik.bridge.svg12.SVG12BridgeContext
 import org.apache.batik.css.dom.CSSOMSVGStyleDeclaration
@@ -42,6 +46,7 @@ import org.apache.batik.css.parser.Parser
 import org.apache.batik.dom.AbstractStylableDocument
 import org.apache.batik.dom.GenericAttr
 import org.apache.batik.dom.svg.SVGAnimatedPathDataSupport
+import org.apache.batik.gvt.CompositeGraphicsNode
 import org.apache.batik.gvt.GraphicsNode
 import org.apache.batik.gvt.ShapeNode
 import org.apache.batik.parser.PathHandler
@@ -53,6 +58,7 @@ import org.apache.batik.util.XMLResourceDescriptor
 import org.w3c.css.sac.LexicalUnit
 import org.w3c.dom.DOMImplementation
 import org.w3c.dom.Document
+import org.w3c.dom.Element
 import org.w3c.dom.css.CSSPrimitiveValue
 import org.w3c.dom.css.CSSStyleDeclaration
 import org.w3c.dom.svg.SVGMatrix
@@ -61,6 +67,7 @@ import java.awt.Shape
 import java.awt.geom.AffineTransform
 import java.io.IOException
 import java.io.InputStream
+import java.util.Collections
 import kotlin.reflect.KProperty
 
 /**
@@ -100,51 +107,60 @@ class SvgParser {
         if (viewBoxHeight == null) {
             viewBoxHeight = height
         }
-        // TODO: useタグに対応する
-        // * id付きのタグをfunで定義して使い回す
+        val groups = mutableListOf<GroupInfo>()
         var extraId: Long = 0
-        val rootExtra = svg.getStyleExtra(extraId = extraId.toString())
-        if (rootExtra != null) {
-            extraId++
-        }
-        var rootGroup = ImageVector.VectorNode.VectorGroup(
-            nodes = emptyList(),
-            // translate by viewBoxX
-            translationX = if (viewBoxX != 0f) -viewBoxX else null,
-            // translate by viewBoxY
-            translationY = if (viewBoxY != 0f) -viewBoxY else null,
-            currentTransformationMatrix = svg.ctm.toMatrix(),
-            extra = rootExtra
-        )
-        val groups = mutableListOf(Triple(rootGroup, mutableListOf<ImageVector.VectorNode>(), mutableSetOf<KProperty<*>>()))
         svg.traverse(
             onElementBegin = { element ->
                 val graphicsNode: GraphicsNode? = bridgeContext.getGraphicsNode(element)
                 val clipPathShape = graphicsNode?.clip?.clipPath
                 when (element) {
-                    is SVGOMGElement -> {
+                    is SVGOMSVGElement,
+                    is SVGOMGElement,
+                    -> {
+                        check(element is SVGStylableElement)
+                        val ctm = when (element) {
+                            is SVGOMSVGElement -> element.ctm
+                            is SVGGraphicsElement -> element.ctm
+                            else -> error("unknown element")
+                        }
                         val transform = AffineTransform().apply {
-                            concatenate(element.ctm.toMatrix().toAffineTransform())
-                            concatenate(
-                                rootGroup.currentTransformationMatrix.toAffineTransform()
-                                    .createInverse()
-                            )
+                            concatenate(ctm.toMatrix().toAffineTransform())
+                            concatenate(svg.ctm.toMatrix().toAffineTransform().createInverse())
                         }
                         val extra = element.getStyleExtra(extraId = extraId.toString())
                         if (extra != null) {
                             extraId++
                         }
-                        val group = ImageVector.VectorNode.VectorGroup(
-                            nodes = emptyList(),
-                            name = element.xmlId.ifEmpty { null },
-                            currentTransformationMatrix = element.ctm.toMatrix(),
-                            clipPathData = clipPathShape?.let {
-                                val transformedClipPathShape = transform.createTransformedShape(it)
-                                document.toPathData(transformedClipPathShape)
-                            } ?: emptyList(),
-                            extra = extra
-                        )
-                        groups.add(Triple(group, mutableListOf(), mutableSetOf()))
+                        val group: ImageVector.VectorNode.VectorGroup
+                        if (element == svg) {
+                            // root group
+                            group = ImageVector.VectorNode.VectorGroup(
+                                nodes = emptyList(),
+                                // translate by viewBoxX
+                                translationX = if (viewBoxX != 0f) -viewBoxX else null,
+                                // translate by viewBoxY
+                                translationY = if (viewBoxY != 0f) -viewBoxY else null,
+                                currentTransformationMatrix = svg.ctm.toMatrix(),
+                                extra = extra
+                            )
+                        } else {
+                            group = ImageVector.VectorNode.VectorGroup(
+                                nodes = emptyList(),
+                                name = element.xmlId.ifEmpty { null },
+                                currentTransformationMatrix = ctm.toMatrix(),
+                                clipPathData = clipPathShape?.let {
+                                    val transformedClipPathShape =
+                                        transform.createTransformedShape(it)
+                                    document.toPathData(transformedClipPathShape)
+                                } ?: emptyList(),
+                                extra = extra
+                            )
+                        }
+                        groups.add(GroupInfo(element, group, mutableListOf(), mutableSetOf()))
+                    }
+
+                    is SVGOMUseElement -> {
+                        val referencedElement = bridgeContext.getReferencedElement(element, element.href.baseVal)
                     }
 
                     is SVGOMPathElement,
@@ -157,11 +173,8 @@ class SvgParser {
                     -> {
                         check(element is SVGGraphicsElement)
                         val transform = AffineTransform().apply {
-                            concatenate(groups.last().first.currentTransformationMatrix.toAffineTransform())
-                            concatenate(
-                                rootGroup.currentTransformationMatrix.toAffineTransform()
-                                    .createInverse()
-                            )
+                            concatenate(groups.last().group.currentTransformationMatrix.toAffineTransform())
+                            concatenate(svg.ctm.toMatrix().toAffineTransform().createInverse())
                         }
                         if (clipPathShape != null) {
                             // Wrap single element by group for clip path
@@ -172,7 +185,7 @@ class SvgParser {
                                     document.toPathData(it)
                                 },
                             )
-                            groups.add(Triple(group, mutableListOf(), mutableSetOf()))
+                            groups.add(GroupInfo(element, group))
                         }
                         val fill = element.style.getColor("fill")?.toBrush()
                         val fillAlpha =
@@ -196,39 +209,39 @@ class SvgParser {
                         var strokeLineJoinId: String? = null
                         var strokeLineMiterId: String? = null
                         groups.reversed().forEach { group ->
-                            val extra = group.first.extra
+                            val extra = group.group.extra
                             if (extra != null) {
                                 if (fill == null && fillId == null && extra.fill != null) {
                                     fillId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::fill)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::fill)
                                 }
                                 if (fillAlpha == null && fillAlphaId == null && extra.fillAlpha != null) {
                                     fillAlphaId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)
                                 }
                                 if (stroke == null && strokeId == null && extra.stroke != null) {
                                     strokeId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::stroke)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::stroke)
                                 }
                                 if (strokeAlpha == null && strokeAlphaId == null && extra.strokeAlpha != null) {
                                     strokeAlphaId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)
                                 }
                                 if (strokeLineWidth == null && strokeLineWidthId == null && extra.strokeLineWidth != null) {
                                     strokeLineWidthId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)
                                 }
                                 if (strokeLineCap == null && strokeLineCapId == null && extra.strokeLineCap != null) {
                                     strokeLineCapId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)
                                 }
                                 if (strokeLineJoin == null && strokeLineJoinId == null && extra.strokeLineJoin != null) {
                                     strokeLineJoinId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)
                                 }
                                 if (strokeLineMiter == null && strokeLineMiterId == null && extra.strokeLineMiter != null) {
                                     strokeLineMiterId = extra.id
-                                    group.third.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)
                                 }
                             }
                         }
@@ -268,7 +281,7 @@ class SvgParser {
                             val transformedShape = transform.createTransformedShape(shape)
                             document.toPathData(transformedShape)
                         }
-                        groups.last().second.add(
+                        groups.last().nodes.add(
                             ImageVector.VectorNode.VectorPath(
                                 pathData = pathData,
                                 pathFillType = null,
@@ -291,9 +304,9 @@ class SvgParser {
                             // close clip path group
                             val group = groups.removeLast()
                             val parent = groups.last()
-                            parent.second.add(
-                                group.first.copy(
-                                    nodes = group.second.toList(),
+                            parent.nodes.add(
+                                group.group.copy(
+                                    nodes = group.nodes.toList(),
                                 )
                             )
                         }
@@ -304,11 +317,13 @@ class SvgParser {
             },
             onElementEnd = { element ->
                 when (element) {
-                    is SVGOMGElement -> {
+                    is SVGOMSVGElement,
+                    is SVGOMGElement,
+                    -> {
                         val group = groups.removeLast()
-                        val parent = groups.last()
-                        val extra = group.first.extra
-                        val properties = group.third
+                        val parent = groups.lastOrNull()
+                        val extra = group.group.extra
+                        val properties = group.referencedProperties
                         val referencedExtra = if (extra != null && properties.isNotEmpty()) {
                             ImageVector.VectorNode.VectorGroup.Extra(
                                 id = extra.id,
@@ -322,41 +337,31 @@ class SvgParser {
                                 strokeLineMiter = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)) extra.strokeLineMiter else null,
                             )
                         } else null
-                        parent.second.add(
-                            group.first.copy(
-                                nodes = group.second.toList(),
-                                referencedExtra = referencedExtra,
+                        if (parent == null) {
+                            // root svg group
+                            groups.add(
+                                group.copy(
+                                    group = group.group.copy(
+                                        nodes = group.nodes.toList(),
+                                        referencedExtra = referencedExtra,
+                                    )
+                                )
                             )
-                        )
-                    }
-
-                    is SVGOMPathElement -> {
-
+                        } else {
+                            parent.nodes.add(
+                                group.group.copy(
+                                    nodes = group.nodes.toList(),
+                                    referencedExtra = referencedExtra,
+                                )
+                            )
+                        }
                     }
 
                     else -> {}
                 }
             }
         )
-        val extra = rootGroup.extra
-        val properties = groups.last().third
-        val referencedExtra = if (extra != null && properties.isNotEmpty()) {
-            ImageVector.VectorNode.VectorGroup.Extra(
-                id = extra.id,
-                fill = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fill)) extra.fill else null,
-                fillAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)) extra.fillAlpha else null,
-                stroke = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::stroke)) extra.stroke else null,
-                strokeAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)) extra.strokeAlpha else null,
-                strokeLineWidth = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)) extra.strokeLineWidth else null,
-                strokeLineCap = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)) extra.strokeLineCap else null,
-                strokeLineJoin = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)) extra.strokeLineJoin else null,
-                strokeLineMiter = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)) extra.strokeLineMiter else null,
-            )
-        } else null
-        rootGroup = groups.last().first.copy(
-            nodes = groups.last().second,
-            referencedExtra = referencedExtra
-        )
+        val rootGroup = groups.last().group
         val imageVector = ImageVector(
             name = "IconName",
             defaultWidth = width.toDouble(),
@@ -368,6 +373,13 @@ class SvgParser {
         )
         return imageVector
     }
+
+    private data class GroupInfo(
+        val element: SVGOMElement,
+        val group: ImageVector.VectorNode.VectorGroup,
+        val nodes: MutableList<ImageVector.VectorNode> = mutableListOf(),
+        val referencedProperties: MutableSet<KProperty<*>> = mutableSetOf(),
+    )
 }
 
 /**
@@ -382,9 +394,15 @@ private fun SVGOMDocument.initializeSvgCssEngine(): BridgeContext {
             println(message)
         }
     }
-    val bridgeContext = SVG12BridgeContext(
+    val bridgeContext = object: SVG12BridgeContext(
         userAgent, DocumentLoader(userAgent)
-    ).apply {
+    ) {
+        override fun getBridgeExtensions(doc: Document?): MutableList<Any?> {
+            return super.getBridgeExtensions(doc).apply {
+                add(SVGUseElementBridgeHrefFixExtension())
+            }
+        }
+    }.apply {
         setDynamicState(BridgeContext.DYNAMIC)
     }
     ParserCSS3ColorFix.registerParser()
@@ -396,17 +414,28 @@ private fun SVGOMElement.traverse(
     onElementBegin: (element: SVGOMElement) -> Unit,
     onElementEnd: (element: SVGOMElement) -> Unit,
 ) {
-    var child = (this.firstElementChild as? SVGOMElement)
-    while (child != null) {
-        (child as? SVGStylableElement)?.mergeStyle()
-        val style = (child as? SVGStylableElement)?.style
-        val styleDisplayValue = style?.getPropertyValue("display")
-        if (styleDisplayValue != "none") {
-            onElementBegin(child)
+    (this as? SVGStylableElement)?.mergeStyle()
+    if (this is SVGOMUseElement) {
+        this.mergeHref()
+    }
+    val style = (this as? SVGStylableElement)?.style
+    val styleDisplayValue = style?.getPropertyValue("display")
+    if (styleDisplayValue != "none") {
+        onElementBegin(this)
+        children().forEach { child ->
             child.traverse(onElementBegin, onElementEnd)
-            onElementEnd(child)
         }
-        child = (child.nextElementSibling as? SVGOMElement)
+        onElementEnd(this)
+    }
+}
+
+private fun SVGOMElement.children(): Sequence<SVGOMElement> {
+    return sequence {
+        var child = (this@children.firstElementChild as? SVGOMElement)
+        while (child != null) {
+            yield(child)
+            child = (child.nextElementSibling as? SVGOMElement)
+        }
     }
 }
 
@@ -636,6 +665,17 @@ private fun SVGStylableElement.mergeStyle() {
         }
     }
     setAttribute("style", style.cssText)
+}
+
+/**
+ * merge "xlink:href" to "href"
+ */
+private fun SVGOMUseElement.mergeHref() {
+    val href = getAttribute("href").ifEmpty { null }
+    if (href == null) {
+        val xlinkHref = getAttributeNS("http://www.w3.org/1999/xlink", "href")
+        setAttribute("href", xlinkHref)
+    }
 }
 
 /**
@@ -1116,4 +1156,45 @@ class PathDataPathHandler: PathHandler {
             )
         )
     }
+}
+
+/**
+ * use href attribute
+ */
+class SVGUseElementBridgeHrefFix: SVGUseElementBridge() {
+    override fun getInstance(): Bridge {
+        return SVGUseElementBridgeHrefFix()
+    }
+
+    override fun buildCompositeGraphicsNode(
+        ctx: BridgeContext,
+        e: Element,
+        gn: CompositeGraphicsNode?,
+    ): CompositeGraphicsNode {
+        val href = e.getAttribute("href").ifEmpty { null }
+        if (href != null) {
+            e.setAttributeNS("http://www.w3.org/1999/xlink", "href", href)
+        }
+        return super.buildCompositeGraphicsNode(ctx, e, gn)
+    }
+}
+
+class SVGUseElementBridgeHrefFixExtension: BridgeExtension {
+    override fun getPriority(): Float = 0f
+
+    override fun getImplementedExtensions(): MutableIterator<Any?> = Collections.EMPTY_LIST.iterator()
+
+    override fun getAuthor(): String = ""
+
+    override fun getContactAddress(): String = ""
+
+    override fun getURL(): String = ""
+
+    override fun getDescription(): String = ""
+
+    override fun registerTags(ctx: BridgeContext) {
+        ctx.putBridge(SVGUseElementBridgeHrefFix())
+    }
+
+    override fun isDynamicElement(e: Element): Boolean = false
 }

@@ -69,7 +69,6 @@ class ImageVectorGenerator {
                                 imageVector.viewportHeight.toShortValueString(),
                             )
                             indent()
-                            // TODO: use タグを fun で再現する
                             val rootGroup = imageVector.rootGroup
                             var nodes = listOf<ImageVector.VectorNode>(rootGroup)
                             if (rootGroup.translationX == null && rootGroup.translationY == null) {
