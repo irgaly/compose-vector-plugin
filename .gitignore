@@ -3,6 +3,7 @@
 .idea/detekt.xml
 .idea/migrations.xml
 .idea/other.xml
+.idea/runConfigurations.xml
 
 # Kotlin
 .kotlin
