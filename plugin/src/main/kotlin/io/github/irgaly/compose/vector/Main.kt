@@ -36,11 +36,13 @@ val svg = """
   <clipPath id="clip1">
       <rect x="15" y="15" rx="5" ry="5" width="40" height="40" />
   </clipPath>
-  <circle cx="25" cy="25" r="20"
+  <circle id="c1" cx="25" cy="25" r="20"
           style="fill: #0000ff; clip-path: url(#clip1); " />
   <g id="used1">
       <circle cx="10" cy="10" r="10" />
+      <circle cx="10" cy="10" r="20" />
   </g>
   <use href="#used1" />
+  <use href="#c1" />
 </svg>
 """

@@ -116,6 +116,7 @@ class SvgParser {
                 when (element) {
                     is SVGOMSVGElement,
                     is SVGOMGElement,
+                    is SVGOMUseElement,
                     -> {
                         check(element is SVGStylableElement)
                         check(graphicsNode != null)
@@ -166,10 +167,6 @@ class SvgParser {
                             )
                         }
                         groups.add(GroupInfo(element, group, mutableListOf(), mutableSetOf()))
-                    }
-
-                    is SVGOMUseElement -> {
-                        val referencedElement = bridgeContext.getReferencedElement(element, element.href.baseVal)
                     }
 
                     is SVGOMPathElement,
@@ -330,6 +327,7 @@ class SvgParser {
                 when (element) {
                     is SVGOMSVGElement,
                     is SVGOMGElement,
+                    is SVGOMUseElement,
                     -> {
                         val group = groups.removeLast()
                         val parent = groups.lastOrNull()
@@ -442,7 +440,11 @@ private fun SVGOMElement.traverse(
 
 private fun SVGOMElement.children(): Sequence<SVGOMElement> {
     return sequence {
-        var child = (this@children.firstElementChild as? SVGOMElement)
+        var child = if (this@children is SVGOMUseElement) {
+            this@children.cssFirstChild as? SVGOMElement
+        } else {
+            this@children.firstElementChild as? SVGOMElement
+        }
         while (child != null) {
             yield(child)
             child = (child.nextElementSibling as? SVGOMElement)
