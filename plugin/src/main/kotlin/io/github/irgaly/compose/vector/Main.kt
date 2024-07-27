@@ -44,5 +44,9 @@ val svg = """
   </g>
   <use href="#used1" />
   <use href="#c1" />
+  <symbol id="rect" viewBox="0 0 100 100">
+    <rect x="0" y="0" width="100" height="100" fill="red"/>
+  </symbol>
+  <use href="#rect" x="10" y="10" width="50" height="50"/>
 </svg>
 """

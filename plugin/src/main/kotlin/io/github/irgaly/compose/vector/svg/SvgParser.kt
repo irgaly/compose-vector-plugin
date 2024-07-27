@@ -8,6 +8,7 @@ import org.apache.batik.anim.dom.SVGGraphicsElement
 import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
 import org.apache.batik.anim.dom.SVGOMCircleElement
+import org.apache.batik.anim.dom.SVGOMDefsElement
 import org.apache.batik.anim.dom.SVGOMDocument
 import org.apache.batik.anim.dom.SVGOMElement
 import org.apache.batik.anim.dom.SVGOMEllipseElement
@@ -18,6 +19,7 @@ import org.apache.batik.anim.dom.SVGOMPolygonElement
 import org.apache.batik.anim.dom.SVGOMPolylineElement
 import org.apache.batik.anim.dom.SVGOMRectElement
 import org.apache.batik.anim.dom.SVGOMSVGElement
+import org.apache.batik.anim.dom.SVGOMSymbolElement
 import org.apache.batik.anim.dom.SVGOMUseElement
 import org.apache.batik.anim.dom.SVGStylableElement
 import org.apache.batik.bridge.Bridge
@@ -110,6 +112,21 @@ class SvgParser {
         val groups = mutableListOf<GroupInfo>()
         var extraId: Long = 0
         svg.traverse(
+            onElementPreprocess = { element ->
+                (element as? SVGStylableElement)?.mergeStyle()
+                (element as? SVGOMUseElement)?.mergeHref()
+                val style = (element as? SVGStylableElement)?.style
+                val styleDisplayValue = style?.getPropertyValue("display")
+                val visibleElement = (styleDisplayValue != "none")
+                when {
+                    (element is SVGOMDefsElement) ||
+                            (element is SVGOMSymbolElement) -> false
+
+                    else -> {
+                        visibleElement
+                    }
+                }
+            },
             onElementBegin = { element ->
                 val graphicsNode: GraphicsNode? = bridgeContext.getGraphicsNode(element)
                 val clipPathShape = graphicsNode?.clip?.clipPath
@@ -151,8 +168,8 @@ class SvgParser {
                         } else {
                             val parentGroup = groups.last().group
                             val ctm = AffineTransform().apply {
-                                concatenate(graphicsNode.transform)
                                 concatenate(parentGroup.currentTransformationMatrix.toAffineTransform())
+                                concatenate(graphicsNode.transform)
                             }
                             group = ImageVector.VectorNode.VectorGroup(
                                 nodes = emptyList(),
@@ -181,8 +198,8 @@ class SvgParser {
                         check(graphicsNode != null)
                         val parentGroup = groups.last().group
                         val ctm = AffineTransform().apply {
-                            concatenate(graphicsNode.transform)
                             concatenate(parentGroup.currentTransformationMatrix.toAffineTransform())
+                            concatenate(graphicsNode.transform)
                         }
                         if (clipPathShape != null) {
                             // Wrap single element by group for clip path
@@ -420,19 +437,15 @@ private fun SVGOMDocument.initializeSvgCssEngine(): BridgeContext {
 }
 
 private fun SVGOMElement.traverse(
+    onElementPreprocess: (element: SVGOMElement) -> Boolean,
     onElementBegin: (element: SVGOMElement) -> Unit,
     onElementEnd: (element: SVGOMElement) -> Unit,
 ) {
-    (this as? SVGStylableElement)?.mergeStyle()
-    if (this is SVGOMUseElement) {
-        this.mergeHref()
-    }
-    val style = (this as? SVGStylableElement)?.style
-    val styleDisplayValue = style?.getPropertyValue("display")
-    if (styleDisplayValue != "none") {
+    val continueTraverse = onElementPreprocess(this)
+    if (continueTraverse) {
         onElementBegin(this)
         children().forEach { child ->
-            child.traverse(onElementBegin, onElementEnd)
+            child.traverse(onElementPreprocess, onElementBegin, onElementEnd)
         }
         onElementEnd(this)
     }
