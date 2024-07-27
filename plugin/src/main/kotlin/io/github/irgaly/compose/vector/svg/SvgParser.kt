@@ -1,6 +1,7 @@
 package io.github.irgaly.compose.vector.svg
 
 import io.github.irgaly.compose.vector.node.ImageVector
+import io.github.irgaly.compose.vector.node.ImageVector.Matrix
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
 import org.apache.batik.anim.dom.SVG12DOMImplementation
 import org.apache.batik.anim.dom.SVGGraphicsElement
@@ -46,6 +47,7 @@ import org.apache.batik.css.parser.Parser
 import org.apache.batik.dom.AbstractStylableDocument
 import org.apache.batik.dom.GenericAttr
 import org.apache.batik.dom.svg.SVGAnimatedPathDataSupport
+import org.apache.batik.dom.svg.SVGOMMatrix
 import org.apache.batik.gvt.CompositeGraphicsNode
 import org.apache.batik.gvt.GraphicsNode
 import org.apache.batik.gvt.ShapeNode
@@ -91,8 +93,6 @@ class SvgParser {
             mergeStyle()
         }
         val viewBox = (svg.viewBox as SVGOMAnimatedRect)
-        val viewBoxX = if (viewBox.isSpecified) svg.viewBox.baseVal.x else 0f
-        val viewBoxY = if (viewBox.isSpecified) svg.viewBox.baseVal.y else 0f
         var viewBoxWidth = if (viewBox.isSpecified) svg.viewBox.baseVal.width else null
         var viewBoxHeight = if (viewBox.isSpecified) svg.viewBox.baseVal.height else null
         val width = if ((svg.width as SVGOMAnimatedLength).isSpecified) {
@@ -118,15 +118,7 @@ class SvgParser {
                     is SVGOMGElement,
                     -> {
                         check(element is SVGStylableElement)
-                        val ctm = when (element) {
-                            is SVGOMSVGElement -> element.ctm
-                            is SVGGraphicsElement -> element.ctm
-                            else -> error("unknown element")
-                        }
-                        val transform = AffineTransform().apply {
-                            concatenate(ctm.toMatrix().toAffineTransform())
-                            concatenate(svg.ctm.toMatrix().toAffineTransform().createInverse())
-                        }
+                        check(graphicsNode != null)
                         val extra = element.getStyleExtra(extraId = extraId.toString())
                         if (extra != null) {
                             extraId++
@@ -134,23 +126,40 @@ class SvgParser {
                         val group: ImageVector.VectorNode.VectorGroup
                         if (element == svg) {
                             // root group
+                            val scaleX = (width / viewBoxWidth.toDouble())
+                            val scaleY = (height / viewBoxHeight.toDouble())
+                            val scale = AffineTransform().apply {
+                                scale(scaleX, scaleY)
+                            }
+                            val matrix = AffineTransform().apply {
+                                concatenate(scale.createInverse())
+                                concatenate(graphicsNode.transform)
+                            }.toMatrix()
+                            val basicMatrix = (matrix.b == 0f && matrix.c == 0f)
                             group = ImageVector.VectorNode.VectorGroup(
                                 nodes = emptyList(),
-                                // translate by viewBoxX
-                                translationX = if (viewBoxX != 0f) -viewBoxX else null,
-                                // translate by viewBoxY
-                                translationY = if (viewBoxY != 0f) -viewBoxY else null,
-                                currentTransformationMatrix = svg.ctm.toMatrix(),
+                                scaleX = if (basicMatrix && matrix.a != 1f) matrix.a else null,
+                                scaleY = if (basicMatrix && matrix.d != 1f) matrix.d else null,
+                                translationX = if (basicMatrix && matrix.e != 0f) matrix.e else null,
+                                translationY = if (basicMatrix && matrix.f != 0f) matrix.f else null,
+                                currentTransformationMatrix =
+                                if (basicMatrix) Matrix(1f, 0f, 0f, 1f, 0f, 0f)
+                                else matrix,
                                 extra = extra
                             )
                         } else {
+                            val parentGroup = groups.last().group
+                            val ctm = AffineTransform().apply {
+                                concatenate(graphicsNode.transform)
+                                concatenate(parentGroup.currentTransformationMatrix.toAffineTransform())
+                            }
                             group = ImageVector.VectorNode.VectorGroup(
                                 nodes = emptyList(),
                                 name = element.xmlId.ifEmpty { null },
                                 currentTransformationMatrix = ctm.toMatrix(),
                                 clipPathData = clipPathShape?.let {
                                     val transformedClipPathShape =
-                                        transform.createTransformedShape(it)
+                                        ctm.createTransformedShape(it)
                                     document.toPathData(transformedClipPathShape)
                                 } ?: emptyList(),
                                 extra = extra
@@ -172,16 +181,18 @@ class SvgParser {
                     is SVGOMPolygonElement,
                     -> {
                         check(element is SVGGraphicsElement)
-                        val transform = AffineTransform().apply {
-                            concatenate(groups.last().group.currentTransformationMatrix.toAffineTransform())
-                            concatenate(svg.ctm.toMatrix().toAffineTransform().createInverse())
+                        check(graphicsNode != null)
+                        val parentGroup = groups.last().group
+                        val ctm = AffineTransform().apply {
+                            concatenate(graphicsNode.transform)
+                            concatenate(parentGroup.currentTransformationMatrix.toAffineTransform())
                         }
                         if (clipPathShape != null) {
                             // Wrap single element by group for clip path
                             val group = ImageVector.VectorNode.VectorGroup(
                                 nodes = emptyList(),
-                                currentTransformationMatrix = element.ctm.toMatrix(),
-                                clipPathData = transform.createTransformedShape(clipPathShape).let {
+                                currentTransformationMatrix = ctm.toMatrix(),
+                                clipPathData = ctm.createTransformedShape(clipPathShape).let {
                                     document.toPathData(it)
                                 },
                             )
@@ -266,7 +277,7 @@ class SvgParser {
                             )
                         } else null
                         val shape = (graphicsNode as ShapeNode).shape
-                        val pathData = if (transform.isIdentity) {
+                        val pathData = if (ctm.isIdentity) {
                             when (element) {
                                 is SVGOMPathElement -> {
                                     // keep original path commands, if possible.
@@ -278,7 +289,7 @@ class SvgParser {
                             }
                         } else {
                             // path commands are simplified by AWT Shape compatible (AWTPathProducer)
-                            val transformedShape = transform.createTransformedShape(shape)
+                            val transformedShape = ctm.createTransformedShape(shape)
                             document.toPathData(transformedShape)
                         }
                         groups.last().nodes.add(
@@ -437,6 +448,10 @@ private fun SVGOMElement.children(): Sequence<SVGOMElement> {
             child = (child.nextElementSibling as? SVGOMElement)
         }
     }
+}
+
+private fun AffineTransform.toMatrix(): Matrix {
+    return SVGOMMatrix(this).toMatrix()
 }
 
 private fun SVGStylableElement.getStyleExtra(
