@@ -48,5 +48,17 @@ val svg = """
     <rect x="0" y="0" width="100" height="100" fill="red"/>
   </symbol>
   <use href="#rect" x="10" y="10" width="50" height="50"/>
+  <defs>
+    <linearGradient id="grad1">
+        <stop offset="0" stop-color="#FF000050"/>
+        <stop offset="1" stop-color="blue"/>
+    </linearGradient>
+    <radialGradient id="grad2" cx="0.2" cy="0.2" r="0.8">
+        <stop offset="0" stop-color="#FF000050"/>
+        <stop offset="1" stop-color="blue"/>
+    </radialGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#grad1)"/>
+  <rect width="100" height="100" fill="url(#grad2)"/>
 </svg>
 """

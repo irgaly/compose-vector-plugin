@@ -622,28 +622,108 @@ private fun ImageVector.PathNode.toCodeBlock(): CodeBlock {
     }
 }
 
-fun ImageVector.Brush.toCodeBlock(): CodeBlock {
+private fun ImageVector.Brush.toCodeBlock(): CodeBlock {
     return buildCodeBlock {
         when (this@toCodeBlock) {
             is ImageVector.Brush.SolidColor -> {
-                when (color) {
-                    is ImageVector.Transparent -> {
+                add("%M(", MemberNames.SolidColor)
+                add(color.toCodeBlock())
+                add(")")
+            }
+
+            is ImageVector.Brush.LinearGradient -> {
+                add("%M(", MemberNames.Brush.LinearGradient)
+                val args = buildList<CodeBlock.Builder.() -> Unit> {
+                    colorStops.forEach {
+                        add {
+                            add("%Lf to ", it.first.toShortValueString())
+                            add(it.second.toCodeBlock())
+                        }
+                    }
+                    add {
                         add(
-                            "%M(%M.Transparent)",
-                            MemberNames.SolidColor,
-                            MemberNames.Color
+                            "%M(%Lf, %Lf)",
+                            MemberNames.Offset,
+                            start.first.toShortValueString(),
+                            start.second.toShortValueString()
                         )
                     }
-
-                    is ImageVector.RgbColor -> {
+                    add {
                         add(
-                            "%M(%M(0x%L))",
-                            MemberNames.SolidColor,
-                            MemberNames.Color,
-                            color.teHexString()
+                            "%M(%Lf, %Lf)",
+                            MemberNames.Offset,
+                            end.first.toShortValueString(),
+                            end.second.toShortValueString()
                         )
+                    }
+                    if (tileMode != ImageVector.TileMode.Clamp) {
+                        add {
+                            add("%M.%L", MemberNames.TileMode, tileMode.name)
+                        }
                     }
                 }
+                args.forEachIndexed { index, block ->
+                    if (0 < index) {
+                        add(", ")
+                    }
+                    block()
+                }
+                add(")")
+            }
+
+            is ImageVector.Brush.RadialGradient -> {
+                add("%M(", MemberNames.Brush.RadialGradient)
+                val args = buildList<CodeBlock.Builder.() -> Unit> {
+                    colorStops.forEach {
+                        add {
+                            add("%Lf to ", it.first.toShortValueString())
+                            add(it.second.toCodeBlock())
+                        }
+                    }
+                    add {
+                        add(
+                            "%M(%Lf, %Lf)",
+                            MemberNames.Offset,
+                            center.first.toShortValueString(),
+                            center.second.toShortValueString()
+                        )
+                    }
+                    add { add("%Lf", radius.toShortValueString()) }
+                    if (tileMode != ImageVector.TileMode.Clamp) {
+                        add {
+                            add("%M.%L", MemberNames.TileMode, tileMode.name)
+                        }
+                    }
+                }
+                args.forEachIndexed { index, block ->
+                    if (0 < index) {
+                        add(", ")
+                    }
+                    block()
+                }
+                add(")")
+            }
+        }
+    }
+}
+
+private fun ImageVector.Color.toCodeBlock(): CodeBlock {
+    return buildCodeBlock {
+        when (this@toCodeBlock) {
+            is ImageVector.Transparent -> {
+                add(
+                    "%M.Transparent",
+                    MemberNames.SolidColor,
+                    MemberNames.Color
+                )
+            }
+
+            is ImageVector.RgbColor -> {
+                add(
+                    "%M(0x%L)",
+                    MemberNames.Color,
+                    teHexString()
+                )
             }
         }
     }

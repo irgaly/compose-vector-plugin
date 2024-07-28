@@ -10,6 +10,7 @@ internal object PackageNames {
     val Graphics = "androidx.compose.ui.graphics"
     val Vector = "androidx.compose.ui.graphics.vector"
     val Unit = "androidx.compose.ui.unit"
+    val Geometory = "androidx.compose.ui.geometory"
 }
 
 internal object ClassNames {
@@ -20,7 +21,6 @@ internal object ClassNames {
     val Brush = ClassName(PackageNames.Graphics, "Brush")
     val StrokeCap = ClassName(PackageNames.Graphics, "StrokeCap")
     val StrokeJoin = ClassName(PackageNames.Graphics, "StrokeJoin")
-    val Color = ClassName(PackageNames.Graphics, "Color")
 }
 
 internal object MemberNames {
@@ -28,9 +28,11 @@ internal object MemberNames {
     val Dp = MemberName(PackageNames.Unit, "dp")
     val Color = MemberName(PackageNames.Graphics, "Color")
     val SolidColor = MemberName(PackageNames.Graphics, "SolidColor")
+    val TileMode = MemberName(PackageNames.Graphics, "TileMode")
     val PathFillType = MemberName(ClassNames.PathFillType.packageName, ClassNames.PathFillType.simpleName)
     val StrokeCap = MemberName(ClassNames.StrokeCap.packageName, ClassNames.StrokeCap.simpleName)
     val StrokeJoin = MemberName(ClassNames.StrokeJoin.packageName, ClassNames.StrokeJoin.simpleName)
+    val Offset = MemberName(PackageNames.Geometory, "Offset")
 
     internal object ImageVector {
         val Builder = MemberName(ClassNames.ImageVector, "Builder")
@@ -45,6 +47,5 @@ internal object MemberNames {
     internal object Brush {
         val LinearGradient = MemberName(ClassNames.Brush, "linearGradient")
         val RadialGradient = MemberName(ClassNames.Brush, "radialGradient")
-        val SweepGradient = MemberName(ClassNames.Brush, "sweepGradient")
     }
 }

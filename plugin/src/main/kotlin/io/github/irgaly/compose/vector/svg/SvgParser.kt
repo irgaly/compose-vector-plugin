@@ -22,11 +22,15 @@ import org.apache.batik.anim.dom.SVGOMSVGElement
 import org.apache.batik.anim.dom.SVGOMSymbolElement
 import org.apache.batik.anim.dom.SVGOMUseElement
 import org.apache.batik.anim.dom.SVGStylableElement
+import org.apache.batik.bridge.AbstractSVGGradientElementBridge
+import org.apache.batik.bridge.AbstractSVGGradientElementBridge.SVGStopElementBridge
 import org.apache.batik.bridge.Bridge
 import org.apache.batik.bridge.BridgeContext
 import org.apache.batik.bridge.BridgeExtension
+import org.apache.batik.bridge.CSSUtilities
 import org.apache.batik.bridge.DocumentLoader
 import org.apache.batik.bridge.GVTBuilder
+import org.apache.batik.bridge.PaintServer
 import org.apache.batik.bridge.SVGUseElementBridge
 import org.apache.batik.bridge.UserAgentAdapter
 import org.apache.batik.bridge.svg12.SVG12BridgeContext
@@ -34,6 +38,7 @@ import org.apache.batik.css.dom.CSSOMSVGStyleDeclaration
 import org.apache.batik.css.engine.CSSContext
 import org.apache.batik.css.engine.CSSEngine
 import org.apache.batik.css.engine.CSSStylableElement
+import org.apache.batik.css.engine.SVGCSSEngine
 import org.apache.batik.css.engine.StyleMap
 import org.apache.batik.css.engine.value.AbstractColorManager
 import org.apache.batik.css.engine.value.AbstractValue
@@ -50,9 +55,16 @@ import org.apache.batik.dom.AbstractStylableDocument
 import org.apache.batik.dom.GenericAttr
 import org.apache.batik.dom.svg.SVGAnimatedPathDataSupport
 import org.apache.batik.dom.svg.SVGOMMatrix
+import org.apache.batik.ext.awt.LinearGradientPaint
+import org.apache.batik.ext.awt.MultipleGradientPaint
+import org.apache.batik.ext.awt.RadialGradientPaint
 import org.apache.batik.gvt.CompositeGraphicsNode
+import org.apache.batik.gvt.CompositeShapePainter
+import org.apache.batik.gvt.FillShapePainter
 import org.apache.batik.gvt.GraphicsNode
 import org.apache.batik.gvt.ShapeNode
+import org.apache.batik.gvt.ShapePainter
+import org.apache.batik.gvt.StrokeShapePainter
 import org.apache.batik.parser.PathHandler
 import org.apache.batik.parser.PathParser
 import org.apache.batik.svggen.SVGColor
@@ -65,10 +77,14 @@ import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.css.CSSPrimitiveValue
 import org.w3c.dom.css.CSSStyleDeclaration
+import org.w3c.dom.css.CSSValue
 import org.w3c.dom.svg.SVGMatrix
 import org.w3c.dom.svg.SVGPathSegList
+import java.awt.Color
+import java.awt.Paint
 import java.awt.Shape
 import java.awt.geom.AffineTransform
+import java.awt.geom.Point2D
 import java.io.IOException
 import java.io.InputStream
 import java.util.Collections
@@ -213,9 +229,11 @@ class SvgParser {
                             groups.add(GroupInfo(element, group))
                         }
                         val fill = element.style.getColor("fill")?.toBrush()
+                            ?: graphicsNode.getFillBrush(ctm)
                         val fillAlpha =
                             element.style.getNullablePropertyValue("fill-opacity")?.toFloat()
                         val stroke = element.style.getColor("stroke")?.toBrush()
+                            ?: graphicsNode.getStrokeBrush(ctm)
                         val strokeAlpha =
                             element.style.getNullablePropertyValue("stroke-opacity")?.toFloat()
                         val strokeLineWidth = element.style.getFloatPxValue("stroke-width")
@@ -425,7 +443,7 @@ private fun SVGOMDocument.initializeSvgCssEngine(): BridgeContext {
     ) {
         override fun getBridgeExtensions(doc: Document?): MutableList<Any?> {
             return super.getBridgeExtensions(doc).apply {
-                add(SVGUseElementBridgeHrefFixExtension())
+                add(OverrideBridgeExtension())
             }
         }
     }.apply {
@@ -1209,7 +1227,7 @@ class SVGUseElementBridgeHrefFix: SVGUseElementBridge() {
     }
 }
 
-class SVGUseElementBridgeHrefFixExtension: BridgeExtension {
+class OverrideBridgeExtension : BridgeExtension {
     override fun getPriority(): Float = 0f
 
     override fun getImplementedExtensions(): MutableIterator<Any?> = Collections.EMPTY_LIST.iterator()
@@ -1224,7 +1242,142 @@ class SVGUseElementBridgeHrefFixExtension: BridgeExtension {
 
     override fun registerTags(ctx: BridgeContext) {
         ctx.putBridge(SVGUseElementBridgeHrefFix())
+        ctx.putBridge(SVGStopElementBridgeColorFix())
     }
 
     override fun isDynamicElement(e: Element): Boolean = false
+}
+
+class SVGStopElementBridgeColorFix : SVGStopElementBridge() {
+    override fun createStop(
+        ctx: BridgeContext,
+        gradientElement: Element,
+        stopElement: Element,
+        opacity: Float,
+    ): AbstractSVGGradientElementBridge.Stop {
+        val stop = super.createStop(ctx, gradientElement, stopElement, opacity)
+        return AbstractSVGGradientElementBridge.Stop(
+            convertStopColor(stopElement, opacity, ctx),
+            stop.offset
+        )
+    }
+
+    /**
+     * from CSSUtilities.convertStopColor
+     */
+    private fun convertStopColor(e: Element, opacity: Float, ctx: BridgeContext): Color {
+        val v = CSSUtilities.getComputedStyle(e, SVGCSSEngine.STOP_COLOR_INDEX)
+        val o = CSSUtilities.getComputedStyle(e, SVGCSSEngine.STOP_OPACITY_INDEX)
+        val newOpacity = opacity * PaintServer.convertOpacity(o)
+        return if (v.cssValueType == CSSValue.CSS_PRIMITIVE_VALUE)
+            convertColor(v, newOpacity)
+        else PaintServer.convertRGBICCColor(e, v.item(0), v.item(1), newOpacity, ctx)
+    }
+
+    /**
+     * from PaintServer.convertColor
+     */
+    private fun convertColor(c: Value, opacity: Float): Color {
+        val r = PaintServer.resolveColorComponent(c.red)
+        val g = PaintServer.resolveColorComponent(c.green)
+        val b = PaintServer.resolveColorComponent(c.blue)
+        val a = if (c is RGBAColorValue) {
+            (PaintServer.resolveColorComponent(c.alpha) / 255f)
+        } else 1.0f
+        return Color(r, g, b, Math.round(255f * a * opacity))
+    }
+}
+
+private fun GraphicsNode.getFillBrush(transform: AffineTransform): ImageVector.Brush? {
+    val shapePainter = ((this as? ShapeNode)?.shapePainter as? CompositeShapePainter)
+    val painter = shapePainter?.painters()?.filterIsInstance<FillShapePainter>()?.firstOrNull()
+    return painter?.paint?.toBrush(transform)
+}
+
+private fun GraphicsNode.getStrokeBrush(transform: AffineTransform): ImageVector.Brush? {
+    val shapePainter = ((this as? ShapeNode)?.shapePainter as? CompositeShapePainter)
+    val painter = shapePainter?.painters()?.filterIsInstance<StrokeShapePainter>()?.firstOrNull()
+    return painter?.paint?.toBrush(transform)
+}
+
+private fun CompositeShapePainter.painters(): Sequence<ShapePainter> {
+    return sequence {
+        (0..shapePainterCount).forEach {
+            yield(getShapePainter(it))
+        }
+    }
+}
+
+private fun Paint.toBrush(transform: AffineTransform): ImageVector.Brush {
+    return when (this) {
+        is LinearGradientPaint -> {
+            val applyTransform = AffineTransform().apply {
+                concatenate(transform)
+                concatenate(this@toBrush.transform)
+            }
+            val start = applyTransform.transform(startPoint, null)
+            val end = applyTransform.transform(endPoint, null)
+            ImageVector.Brush.LinearGradient(
+                colorStops = fractions.zip(colors).map { (stop, color) ->
+                    Pair(stop, color.toImageVectorColor())
+                },
+                start = Pair(start.x.toFloat(), start.y.toFloat()),
+                end = Pair(end.x.toFloat(), end.y.toFloat()),
+                tileMode = when (cycleMethod) {
+                    MultipleGradientPaint.NO_CYCLE -> ImageVector.TileMode.Clamp
+                    MultipleGradientPaint.REPEAT -> ImageVector.TileMode.Repeated
+                    MultipleGradientPaint.REFLECT -> ImageVector.TileMode.Mirror
+                    else -> error("unknown spreadMethod")
+                }
+            )
+        }
+
+        is RadialGradientPaint -> {
+            val applyTransform = AffineTransform().apply {
+                concatenate(transform)
+                concatenate(this@toBrush.transform)
+            }
+            val center = applyTransform.transform(centerPoint, null)
+            val radius = applyTransform.deltaTransform(Point2D.Float(radius, 0f), null).x.toFloat()
+            ImageVector.Brush.RadialGradient(
+                colorStops = fractions.zip(colors).map { (stop, color) ->
+                    Pair(stop, color.toImageVectorColor())
+                },
+                center = Pair(center.x.toFloat(), center.y.toFloat()),
+                radius = radius,
+                tileMode = when (cycleMethod) {
+                    MultipleGradientPaint.NO_CYCLE -> ImageVector.TileMode.Clamp
+                    MultipleGradientPaint.REPEAT -> ImageVector.TileMode.Repeated
+                    MultipleGradientPaint.REFLECT -> ImageVector.TileMode.Mirror
+                    else -> error("unknown spreadMethod")
+                }
+            )
+        }
+
+        is Color -> {
+            ImageVector.Brush.SolidColor(
+                ImageVector.RgbColor(
+                    red = red,
+                    green = green,
+                    blue = blue,
+                    alpha = alpha
+                )
+            )
+        }
+
+        else -> error("unknown Paint: $this")
+    }
+}
+
+private fun Color.toImageVectorColor(): ImageVector.Color {
+    return if (alpha == 0) {
+        ImageVector.Transparent
+    } else {
+        ImageVector.RgbColor(
+            red = red,
+            green = green,
+            blue = blue,
+            alpha = alpha
+        )
+    }
 }

@@ -85,6 +85,19 @@ data class ImageVector(
         data class SolidColor(
             val color: Color,
         ) : Brush
+        data class LinearGradient(
+            val colorStops: List<Pair<Float, Color>>,
+            val start: Pair<Float, Float>,
+            val end: Pair<Float, Float>,
+            val tileMode: TileMode,
+        ) : Brush
+
+        data class RadialGradient(
+            val colorStops: List<Pair<Float, Color>>,
+            val center: Pair<Float, Float>,
+            val radius: Float,
+            val tileMode: TileMode,
+        ) : Brush
     }
 
     enum class StrokeCap {
@@ -93,6 +106,10 @@ data class ImageVector(
 
     enum class StrokeJoin {
         Bevel, Miter, Round
+    }
+
+    enum class TileMode {
+        Clamp, Decal, Mirror, Repeated
     }
 
     sealed interface Color
