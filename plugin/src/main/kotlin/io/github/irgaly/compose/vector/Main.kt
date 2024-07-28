@@ -8,15 +8,19 @@ suspend fun main(@Suppress("UNUSED_PARAMETER") args: Array<String>) {
     val input = svg.byteInputStream()
     val imageVector = SvgParser(object : Logger {
         override fun debug(message: String) {
+            println("debug: $message")
         }
 
         override fun info(message: String) {
+            println("info: $message")
         }
 
         override fun warn(message: String, error: Exception?) {
+            println("warn: $message | $error")
         }
 
         override fun error(message: String, error: Exception?) {
+            println("error: $message | $error")
         }
     }).parse(input)
     val codes = ImageVectorGenerator().generate(

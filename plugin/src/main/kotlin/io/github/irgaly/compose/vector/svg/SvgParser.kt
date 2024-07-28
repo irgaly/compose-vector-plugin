@@ -9,6 +9,7 @@ import org.apache.batik.anim.dom.SVGGraphicsElement
 import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
 import org.apache.batik.anim.dom.SVGOMCircleElement
+import org.apache.batik.anim.dom.SVGOMClipPathElement
 import org.apache.batik.anim.dom.SVGOMDefsElement
 import org.apache.batik.anim.dom.SVGOMDocument
 import org.apache.batik.anim.dom.SVGOMElement
@@ -76,6 +77,7 @@ import org.w3c.css.sac.LexicalUnit
 import org.w3c.dom.DOMImplementation
 import org.w3c.dom.Document
 import org.w3c.dom.Element
+import org.w3c.dom.Node
 import org.w3c.dom.css.CSSPrimitiveValue
 import org.w3c.dom.css.CSSStyleDeclaration
 import org.w3c.dom.css.CSSValue
@@ -107,27 +109,28 @@ class SvgParser(
                 XMLResourceDescriptor.getXMLParserClassName()
             ).createDocument("xml", input) as SVGOMDocument
         } catch (error: IOException) {
+            logger.error("open XML document error", error)
             throw error
         }
         val bridgeContext = document.initializeSvgCssEngine()
-        val svg = (document.rootElement as SVGOMSVGElement).apply {
-            mergeStyle()
-        }
+        val svg = (document.rootElement as SVGOMSVGElement)
         val viewBox = (svg.viewBox as SVGOMAnimatedRect)
         var viewBoxWidth = if (viewBox.isSpecified) svg.viewBox.baseVal.width else null
         var viewBoxHeight = if (viewBox.isSpecified) svg.viewBox.baseVal.height else null
         val width = if ((svg.width as SVGOMAnimatedLength).isSpecified) {
             svg.width.baseVal.valueInSpecifiedUnits
-        } else viewBoxWidth ?: error("svg tag has no width")
+        } else viewBoxWidth ?: error("no width at svg tag")
         val height = if ((svg.height as SVGOMAnimatedLength).isSpecified) {
             svg.height.baseVal.valueInSpecifiedUnits
-        } else viewBoxHeight ?: error("svg tag has no width")
+        } else viewBoxHeight ?: error("no height at svg tag")
         if (viewBoxWidth == null) {
             viewBoxWidth = width
         }
         if (viewBoxHeight == null) {
             viewBoxHeight = height
         }
+        logger.debug("viewBox width = $viewBoxWidth, height = $viewBoxHeight")
+        logger.debug("width = $width, height = $height")
         val groups = mutableListOf<GroupInfo>()
         var extraId: Long = 0
         svg.traverse(
@@ -137,18 +140,27 @@ class SvgParser(
                 val style = (element as? SVGStylableElement)?.style
                 val styleDisplayValue = style?.getPropertyValue("display")
                 val visibleElement = (styleDisplayValue != "none")
-                when {
+                val process = when {
                     (element is SVGOMDefsElement) ||
-                            (element is SVGOMSymbolElement) -> false
+                            (element is SVGOMSymbolElement) ||
+                            (element is SVGOMClipPathElement) -> {
+                        // Skip process element
+                        false
+                    }
 
                     else -> {
                         visibleElement
                     }
                 }
+                if (!process) {
+                    logger.debug("skip element: ${element.toDebugString()}")
+                }
+                process
             },
             onElementBegin = { element ->
                 val graphicsNode: GraphicsNode? = bridgeContext.getGraphicsNode(element)
                 val clipPathShape = graphicsNode?.clip?.clipPath
+                logger.debug("element begin: ${element.toDebugString()}")
                 when (element) {
                     is SVGOMSVGElement,
                     is SVGOMGElement,
@@ -358,7 +370,10 @@ class SvgParser(
                         }
                     }
 
-                    else -> {}
+                    else -> {
+                        logger.error("Unsupported element: ${element.toDebugString()}")
+                        error("Unsupported element: ${element.toDebugString()}")
+                    }
                 }
             },
             onElementEnd = { element ->
@@ -404,7 +419,9 @@ class SvgParser(
                         }
                     }
 
-                    else -> {}
+                    else -> {
+                        // Nothing to do
+                    }
                 }
             }
         )
@@ -1305,7 +1322,7 @@ private fun GraphicsNode.getStrokeBrush(transform: AffineTransform): ImageVector
 
 private fun CompositeShapePainter.painters(): Sequence<ShapePainter> {
     return sequence {
-        (0..shapePainterCount).forEach {
+        (0..<shapePainterCount).forEach {
             yield(getShapePainter(it))
         }
     }
@@ -1382,5 +1399,23 @@ private fun Color.toImageVectorColor(): ImageVector.Color {
             blue = blue,
             alpha = alpha
         )
+    }
+}
+
+private fun Element.toDebugString(): String {
+    return "<$nodeName ${
+        attributes().joinToString {
+            "${it.nodeName}=${
+                it.nodeValue.trim().replace("\n", " ")
+            }"
+        }
+    }> (${this::class.simpleName})"
+}
+
+private fun Element.attributes(): Sequence<Node> {
+    return sequence {
+        (0..<attributes.length).forEach {
+            yield(attributes.item(it))
+        }
     }
 }
