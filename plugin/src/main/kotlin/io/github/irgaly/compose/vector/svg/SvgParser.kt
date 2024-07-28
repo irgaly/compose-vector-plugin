@@ -185,15 +185,17 @@ class SvgParser(
                                 concatenate(graphicsNode.transform)
                             }.toMatrix()
                             val basicMatrix = (matrix.b == 0f && matrix.c == 0f)
+                            val ctm = if (basicMatrix) Matrix(1f, 0f, 0f, 1f, 0f, 0f) else matrix
+                            if (!basicMatrix) {
+                                logger.debug("    matrix = $ctm")
+                            }
                             group = ImageVector.VectorNode.VectorGroup(
                                 nodes = emptyList(),
                                 scaleX = if (basicMatrix && matrix.a != 1f) matrix.a else null,
                                 scaleY = if (basicMatrix && matrix.d != 1f) matrix.d else null,
                                 translationX = if (basicMatrix && matrix.e != 0f) matrix.e else null,
                                 translationY = if (basicMatrix && matrix.f != 0f) matrix.f else null,
-                                currentTransformationMatrix =
-                                if (basicMatrix) Matrix(1f, 0f, 0f, 1f, 0f, 0f)
-                                else matrix,
+                                currentTransformationMatrix = ctm,
                                 extra = extra
                             )
                         } else {
@@ -201,6 +203,9 @@ class SvgParser(
                             val ctm = AffineTransform().apply {
                                 concatenate(parentGroup.currentTransformationMatrix.toAffineTransform())
                                 concatenate(graphicsNode.transform)
+                            }
+                            if (!ctm.isIdentity) {
+                                logger.debug("    matrix = ${ctm.toMatrix()}")
                             }
                             group = ImageVector.VectorNode.VectorGroup(
                                 nodes = emptyList(),
@@ -231,6 +236,9 @@ class SvgParser(
                         val ctm = AffineTransform().apply {
                             concatenate(parentGroup.currentTransformationMatrix.toAffineTransform())
                             concatenate(graphicsNode.transform)
+                        }
+                        if (!ctm.isIdentity) {
+                            logger.debug("    matrix = ${ctm.toMatrix()}")
                         }
                         if (clipPathShape != null) {
                             // Wrap single element by group for clip path

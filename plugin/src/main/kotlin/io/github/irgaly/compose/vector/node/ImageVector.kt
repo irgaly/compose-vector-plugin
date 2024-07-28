@@ -257,5 +257,9 @@ data class ImageVector(
                 f = 0f,
             )
         }
+
+        override fun toString(): String {
+            return "[$a, $b, $c, $d, $e, $f]"
+        }
     }
 }
