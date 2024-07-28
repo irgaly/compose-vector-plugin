@@ -1,11 +1,24 @@
 package io.github.irgaly.compose.vector
 
+import io.github.irgaly.compose.Logger
 import io.github.irgaly.compose.vector.svg.SvgParser
 
 @Suppress("RedundantSuspendModifier")
 suspend fun main(@Suppress("UNUSED_PARAMETER") args: Array<String>) {
     val input = svg.byteInputStream()
-    val imageVector = SvgParser().parse(input)
+    val imageVector = SvgParser(object : Logger {
+        override fun debug(message: String) {
+        }
+
+        override fun info(message: String) {
+        }
+
+        override fun warn(message: String, error: Exception?) {
+        }
+
+        override fun error(message: String, error: Exception?) {
+        }
+    }).parse(input)
     val codes = ImageVectorGenerator().generate(
         imageVector,
         "io.github.irgaly.icons",

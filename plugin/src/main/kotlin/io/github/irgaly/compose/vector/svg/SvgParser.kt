@@ -1,5 +1,6 @@
 package io.github.irgaly.compose.vector.svg
 
+import io.github.irgaly.compose.Logger
 import io.github.irgaly.compose.vector.node.ImageVector
 import io.github.irgaly.compose.vector.node.ImageVector.Matrix
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
@@ -93,7 +94,9 @@ import kotlin.reflect.KProperty
 /**
  * SVG -> ImageVector
  */
-class SvgParser {
+class SvgParser(
+    val logger: Logger,
+) {
     /**
      * @throws IOException
      * @throws IllegalStateException parse error
@@ -729,7 +732,7 @@ private fun SVGOMUseElement.mergeHref() {
 /**
  * needs public, because this class will be registered to "org.w3c.css.sac.parser"
  */
-class ParserCSS3ColorFix: Parser() {
+internal class ParserCSS3ColorFix : Parser() {
     companion object {
         fun registerParser() {
             XMLResourceDescriptor.setCSSParserClassName(ParserCSS3ColorFix::class.java.canonicalName)
@@ -845,7 +848,7 @@ class ParserCSS3ColorFix: Parser() {
     }
 }
 
-class SAXSVGDocumentFactoryCSS3ColorFix(
+private class SAXSVGDocumentFactoryCSS3ColorFix(
     parser: String?,
 ): SAXSVGDocumentFactory(parser) {
     override fun getDOMImplementation(ver: String?): DOMImplementation {
@@ -853,7 +856,7 @@ class SAXSVGDocumentFactoryCSS3ColorFix(
     }
 }
 
-class SVG120DOMImplementationCSS3ColorFix: SVG12DOMImplementation() {
+private class SVG120DOMImplementationCSS3ColorFix : SVG12DOMImplementation() {
     override fun createCSSEngine(
         doc: AbstractStylableDocument,
         ctx: CSSContext,
@@ -873,7 +876,7 @@ class SVG120DOMImplementationCSS3ColorFix: SVG12DOMImplementation() {
     }
 }
 
-class AbstractColorManagerCSS3ColorFix(
+private class AbstractColorManagerCSS3ColorFix(
     private val original: AbstractColorManager,
 ): AbstractColorManager() {
     init {
@@ -918,7 +921,7 @@ class AbstractColorManagerCSS3ColorFix(
     override fun getDefaultValue(): Value = original.defaultValue
 }
 
-class RGBAColorValue(
+private class RGBAColorValue(
     private val r: Value,
     private val g: Value,
     private val b: Value,
@@ -951,7 +954,7 @@ class RGBAColorValue(
     }
 }
 
-fun SVGMatrix.toMatrix(): ImageVector.Matrix {
+private fun SVGMatrix.toMatrix(): ImageVector.Matrix {
     return ImageVector.Matrix(
         a = a,
         b = b,
@@ -962,7 +965,7 @@ fun SVGMatrix.toMatrix(): ImageVector.Matrix {
     )
 }
 
-fun ImageVector.Matrix.toAffineTransform(): AffineTransform {
+private fun ImageVector.Matrix.toAffineTransform(): AffineTransform {
     return AffineTransform(
         a,
         b,
@@ -973,7 +976,7 @@ fun ImageVector.Matrix.toAffineTransform(): AffineTransform {
     )
 }
 
-fun Document.toPathData(shape: Shape): List<ImageVector.PathNode> {
+private fun Document.toPathData(shape: Shape): List<ImageVector.PathNode> {
     val pathString = SVGPath.toSVGPathData(shape, SVGGeneratorContext.createDefault(this))
     return PathDataPathHandler().also {
         PathParser().apply {
@@ -982,13 +985,13 @@ fun Document.toPathData(shape: Shape): List<ImageVector.PathNode> {
     }.getPath()
 }
 
-fun SVGPathSegList.toPathData(): List<ImageVector.PathNode> {
+private fun SVGPathSegList.toPathData(): List<ImageVector.PathNode> {
     return PathDataPathHandler().also {
         SVGAnimatedPathDataSupport.handlePathSegList(this, it)
     }.getPath()
 }
 
-class PathDataPathHandler: PathHandler {
+private class PathDataPathHandler : PathHandler {
     private val pathData = mutableListOf<ImageVector.PathNode>()
 
     fun getPath(): List<ImageVector.PathNode> {
@@ -1209,7 +1212,7 @@ class PathDataPathHandler: PathHandler {
 /**
  * use href attribute
  */
-class SVGUseElementBridgeHrefFix: SVGUseElementBridge() {
+private class SVGUseElementBridgeHrefFix : SVGUseElementBridge() {
     override fun getInstance(): Bridge {
         return SVGUseElementBridgeHrefFix()
     }
@@ -1227,7 +1230,7 @@ class SVGUseElementBridgeHrefFix: SVGUseElementBridge() {
     }
 }
 
-class OverrideBridgeExtension : BridgeExtension {
+private class OverrideBridgeExtension : BridgeExtension {
     override fun getPriority(): Float = 0f
 
     override fun getImplementedExtensions(): MutableIterator<Any?> = Collections.EMPTY_LIST.iterator()
@@ -1248,7 +1251,7 @@ class OverrideBridgeExtension : BridgeExtension {
     override fun isDynamicElement(e: Element): Boolean = false
 }
 
-class SVGStopElementBridgeColorFix : SVGStopElementBridge() {
+private class SVGStopElementBridgeColorFix : SVGStopElementBridge() {
     override fun createStop(
         ctx: BridgeContext,
         gradientElement: Element,
