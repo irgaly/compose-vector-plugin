@@ -50,13 +50,11 @@ import org.apache.batik.css.engine.value.StringValue
 import org.apache.batik.css.engine.value.Value
 import org.apache.batik.css.engine.value.ValueConstants.NUMBER_0
 import org.apache.batik.css.engine.value.ValueManager
-import org.apache.batik.css.engine.value.svg.SVGColorManager
 import org.apache.batik.css.parser.CSSLexicalUnit
 import org.apache.batik.css.parser.ExtendedParser
 import org.apache.batik.css.parser.LexicalUnits
 import org.apache.batik.css.parser.Parser
 import org.apache.batik.dom.AbstractStylableDocument
-import org.apache.batik.dom.GenericAttr
 import org.apache.batik.dom.svg.SVGAnimatedPathDataSupport
 import org.apache.batik.dom.svg.SVGOMMatrix
 import org.apache.batik.ext.awt.LinearGradientPaint
@@ -71,7 +69,6 @@ import org.apache.batik.gvt.ShapePainter
 import org.apache.batik.gvt.StrokeShapePainter
 import org.apache.batik.parser.PathHandler
 import org.apache.batik.parser.PathParser
-import org.apache.batik.svggen.SVGColor
 import org.apache.batik.svggen.SVGGeneratorContext
 import org.apache.batik.svggen.SVGPath
 import org.apache.batik.util.XMLResourceDescriptor
@@ -84,7 +81,6 @@ import org.w3c.dom.css.CSSPrimitiveValue
 import org.w3c.dom.css.CSSValue
 import org.w3c.dom.svg.SVGMatrix
 import org.w3c.dom.svg.SVGPathSegList
-import org.w3c.dom.svg.SVGUnitTypes
 import java.awt.Color
 import java.awt.Paint
 import java.awt.Shape
@@ -138,8 +134,12 @@ class SvgParser(
         svg.traverse(
             onElementPreprocess = { element ->
                 val styles = (element as? SVGStylableElement)?.getComputedStyleMap(null)
-                val styleDisplayValue = styles?.getValue(SVGCSSEngine.DISPLAY_INDEX)?.stringValue ?: "inline"
-                val visibleElement = !styleDisplayValue.equals("none", ignoreCase = true)
+                val display = styles?.getValue(SVGCSSEngine.DISPLAY_INDEX)?.stringValue ?: "inline"
+                val visibility = styles?.getValue(SVGCSSEngine.VISIBILITY_INDEX)?.stringValue ?: "visible"
+                val visibleElement = (
+                        !display.equals("none", ignoreCase = true) &&
+                        !visibility.equals("hidden", ignoreCase = true)
+                        )
                 val process = when {
                     (element is SVGOMDefsElement) ||
                             (element is SVGOMSymbolElement) ||

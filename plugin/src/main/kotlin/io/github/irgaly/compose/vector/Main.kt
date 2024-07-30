@@ -42,6 +42,7 @@ val svg = """
   fill="#FFe8eaed"
   stroke-width="10px">
   <g display="none" style="display:none" />
+  <g visibility="hidden" />
   <g stroke="rgb(1 2 3 4)" />
   <g stroke="rgb(1 2 3 / 4)" />
   <g stroke="rgba(1%,2%,3%,4%)" />
