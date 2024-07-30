@@ -642,7 +642,7 @@ private fun ImageVector.Brush.toCodeBlock(): CodeBlock {
                     }
                     add {
                         add(
-                            "%M(%Lf, %Lf)",
+                            "start = %M(%Lf, %Lf)",
                             MemberNames.Offset,
                             start.first.toShortValueString(),
                             start.second.toShortValueString()
@@ -650,7 +650,7 @@ private fun ImageVector.Brush.toCodeBlock(): CodeBlock {
                     }
                     add {
                         add(
-                            "%M(%Lf, %Lf)",
+                            "end = %M(%Lf, %Lf)",
                             MemberNames.Offset,
                             end.first.toShortValueString(),
                             end.second.toShortValueString()
@@ -658,7 +658,7 @@ private fun ImageVector.Brush.toCodeBlock(): CodeBlock {
                     }
                     if (tileMode != ImageVector.TileMode.Clamp) {
                         add {
-                            add("%M.%L", MemberNames.TileMode, tileMode.name)
+                            add("tileMode = %M.%L", MemberNames.TileMode, tileMode.name)
                         }
                     }
                 }
@@ -682,16 +682,16 @@ private fun ImageVector.Brush.toCodeBlock(): CodeBlock {
                     }
                     add {
                         add(
-                            "%M(%Lf, %Lf)",
+                            "center = %M(%Lf, %Lf)",
                             MemberNames.Offset,
                             center.first.toShortValueString(),
                             center.second.toShortValueString()
                         )
                     }
-                    add { add("%Lf", radius.toShortValueString()) }
+                    add { add("radius = %Lf", radius.toShortValueString()) }
                     if (tileMode != ImageVector.TileMode.Clamp) {
                         add {
-                            add("%M.%L", MemberNames.TileMode, tileMode.name)
+                            add("tileMode = %M.%L", MemberNames.TileMode, tileMode.name)
                         }
                     }
                 }
