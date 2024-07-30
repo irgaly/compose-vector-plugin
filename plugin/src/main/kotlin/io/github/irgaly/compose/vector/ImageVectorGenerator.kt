@@ -70,14 +70,10 @@ class ImageVectorGenerator {
                             )
                             indent()
                             val rootGroup = imageVector.rootGroup
-                            var nodes = listOf<ImageVector.VectorNode>(rootGroup)
-                            if (rootGroup.translationX == null && rootGroup.translationY == null) {
-                                nodes = rootGroup.nodes
-                                if (rootGroup.referencedExtra != null) {
-                                    addExtraReferenceCodeBlock(rootGroup.referencedExtra)
-                                }
+                            if (rootGroup.referencedExtra != null) {
+                                addExtraReferenceCodeBlock(rootGroup.referencedExtra)
                             }
-                            nodes.recursiveForEach(
+                            rootGroup.nodes.recursiveForEach(
                                 onGroupBegin = { node ->
                                     val groupArguments = buildList<CodeBlock.Builder.() -> Unit> {
                                         if (node.name != null) {

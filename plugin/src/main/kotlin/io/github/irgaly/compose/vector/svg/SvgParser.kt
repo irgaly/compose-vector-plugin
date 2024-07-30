@@ -137,7 +137,10 @@ class SvgParser(
         }
         logger.debug("viewBox width = $viewBoxWidth, height = $viewBoxHeight")
         logger.debug("width = $width, height = $height")
-        val groups = mutableListOf<GroupInfo>()
+        val groups = mutableListOf(
+            // root group
+            GroupInfo(svg, ImageVector.VectorNode.VectorGroup(emptyList()))
+        )
         var extraId: Long = 0
         svg.traverse(
             onElementPreprocess = { element ->
@@ -192,7 +195,7 @@ class SvgParser(
                         }
                         val group: ImageVector.VectorNode.VectorGroup
                         if (element == svg) {
-                            // root group
+                            // root svg group
                             val scaleX = (width / viewBoxWidth.toDouble())
                             val scaleY = (height / viewBoxHeight.toDouble())
                             val scale = AffineTransform().apply {
@@ -237,7 +240,7 @@ class SvgParser(
                                 extra = extra
                             )
                         }
-                        groups.add(GroupInfo(element, group, mutableListOf(), mutableSetOf()))
+                        groups.add(GroupInfo(element, group))
                     }
 
                     is SVGOMPathElement,
@@ -404,39 +407,41 @@ class SvgParser(
                     is SVGOMUseElement,
                     -> {
                         val group = groups.removeLast()
-                        val parent = groups.lastOrNull()
-                        val extra = group.group.extra
-                        val properties = group.referencedProperties
-                        val referencedExtra = if (extra != null && properties.isNotEmpty()) {
-                            ImageVector.VectorNode.VectorGroup.Extra(
-                                id = extra.id,
-                                fill = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fill)) extra.fill else null,
-                                fillAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)) extra.fillAlpha else null,
-                                stroke = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::stroke)) extra.stroke else null,
-                                strokeAlpha = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)) extra.strokeAlpha else null,
-                                strokeLineWidth = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)) extra.strokeLineWidth else null,
-                                strokeLineCap = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)) extra.strokeLineCap else null,
-                                strokeLineJoin = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)) extra.strokeLineJoin else null,
-                                strokeLineMiter = if (properties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)) extra.strokeLineMiter else null,
+                        val parent = groups.last()
+                        val currentGroup = group.group.copy(
+                            nodes = group.nodes.toList(),
+                            referencedExtra = group.getReferencedExtra(),
+                        )
+                        if (
+                            currentGroup.nodes.isEmpty() || (
+                                (currentGroup.rotate == null) &&
+                                (currentGroup.pivotX == null) &&
+                                (currentGroup.pivotY == null) &&
+                                (currentGroup.scaleX == null) &&
+                                (currentGroup.scaleY == null) &&
+                                (currentGroup.translationX == null) &&
+                                (currentGroup.translationY == null) &&
+                                currentGroup.clipPathData.isEmpty() &&
+                                ((element == svg) || (currentGroup.referencedExtra == null))
                             )
-                        } else null
-                        if (parent == null) {
-                            // root svg group
-                            groups.add(
-                                group.copy(
-                                    group = group.group.copy(
-                                        nodes = group.nodes.toList(),
-                                        referencedExtra = referencedExtra,
+                        ) {
+                            // skip group
+                            parent.nodes.addAll(currentGroup.nodes)
+                            if (element == svg) {
+                                // copy extra to root group
+                                parent.referencedProperties.addAll(group.referencedProperties)
+                                groups.removeLast()
+                                groups.add(
+                                    parent.copy(
+                                        group = parent.group.copy(
+                                            extra = currentGroup.extra
+                                        )
                                     )
                                 )
-                            )
+                            }
                         } else {
-                            parent.nodes.add(
-                                group.group.copy(
-                                    nodes = group.nodes.toList(),
-                                    referencedExtra = referencedExtra,
-                                )
-                            )
+                            // add group
+                            parent.nodes.add(currentGroup)
                         }
                     }
 
@@ -446,7 +451,7 @@ class SvgParser(
                 }
             }
         )
-        val rootGroup = groups.last().group
+        val root = groups.first()
         val imageVector = ImageVector(
             name = "IconName",
             defaultWidth = width.toDouble(),
@@ -454,7 +459,10 @@ class SvgParser(
             viewportWidth = viewBoxWidth,
             viewportHeight = viewBoxHeight,
             autoMirror = false,
-            rootGroup = rootGroup
+            rootGroup = root.group.copy(
+                nodes = root.nodes.toList(),
+                referencedExtra = root.getReferencedExtra()
+            )
         )
         return imageVector
     }
@@ -464,7 +472,23 @@ class SvgParser(
         val group: ImageVector.VectorNode.VectorGroup,
         val nodes: MutableList<ImageVector.VectorNode> = mutableListOf(),
         val referencedProperties: MutableSet<KProperty<*>> = mutableSetOf(),
-    )
+    ) {
+        fun getReferencedExtra(): ImageVector.VectorNode.VectorGroup.Extra? {
+            return if (group.extra != null && referencedProperties.isNotEmpty()) {
+                ImageVector.VectorNode.VectorGroup.Extra(
+                    id = group.extra.id,
+                    fill = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::fill)) group.extra.fill else null,
+                    fillAlpha = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)) group.extra.fillAlpha else null,
+                    stroke = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::stroke)) group.extra.stroke else null,
+                    strokeAlpha = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)) group.extra.strokeAlpha else null,
+                    strokeLineWidth = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)) group.extra.strokeLineWidth else null,
+                    strokeLineCap = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)) group.extra.strokeLineCap else null,
+                    strokeLineJoin = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)) group.extra.strokeLineJoin else null,
+                    strokeLineMiter = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)) group.extra.strokeLineMiter else null,
+                )
+            } else null
+        }
+    }
 }
 
 /**
