@@ -103,7 +103,7 @@ import kotlin.reflect.KProperty
  * SVG -> ImageVector
  */
 class SvgParser(
-    val logger: Logger,
+    private val logger: Logger,
 ) {
     /**
      * @throws IOException
