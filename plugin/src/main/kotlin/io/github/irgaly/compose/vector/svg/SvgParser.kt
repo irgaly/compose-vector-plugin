@@ -2,7 +2,6 @@ package io.github.irgaly.compose.vector.svg
 
 import io.github.irgaly.compose.Logger
 import io.github.irgaly.compose.vector.node.ImageVector
-import io.github.irgaly.compose.vector.node.ImageVector.Matrix
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
 import org.apache.batik.anim.dom.SVG12DOMImplementation
 import org.apache.batik.anim.dom.SVGGraphicsElement
@@ -21,6 +20,7 @@ import org.apache.batik.anim.dom.SVGOMPolygonElement
 import org.apache.batik.anim.dom.SVGOMPolylineElement
 import org.apache.batik.anim.dom.SVGOMRectElement
 import org.apache.batik.anim.dom.SVGOMSVGElement
+import org.apache.batik.anim.dom.SVGOMStyleElement
 import org.apache.batik.anim.dom.SVGOMSymbolElement
 import org.apache.batik.anim.dom.SVGOMUseElement
 import org.apache.batik.anim.dom.SVGStylableElement
@@ -36,7 +36,6 @@ import org.apache.batik.bridge.PaintServer
 import org.apache.batik.bridge.SVGUseElementBridge
 import org.apache.batik.bridge.UserAgentAdapter
 import org.apache.batik.bridge.svg12.SVG12BridgeContext
-import org.apache.batik.css.dom.CSSOMSVGStyleDeclaration
 import org.apache.batik.css.engine.CSSContext
 import org.apache.batik.css.engine.CSSEngine
 import org.apache.batik.css.engine.CSSStylableElement
@@ -44,6 +43,7 @@ import org.apache.batik.css.engine.SVGCSSEngine
 import org.apache.batik.css.engine.StyleMap
 import org.apache.batik.css.engine.value.AbstractColorManager
 import org.apache.batik.css.engine.value.AbstractValue
+import org.apache.batik.css.engine.value.ComputedValue
 import org.apache.batik.css.engine.value.ShorthandManager
 import org.apache.batik.css.engine.value.StringValue
 import org.apache.batik.css.engine.value.Value
@@ -79,10 +79,10 @@ import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import org.w3c.dom.css.CSSPrimitiveValue
-import org.w3c.dom.css.CSSStyleDeclaration
 import org.w3c.dom.css.CSSValue
 import org.w3c.dom.svg.SVGMatrix
 import org.w3c.dom.svg.SVGPathSegList
+import org.w3c.dom.svg.SVGUnitTypes
 import java.awt.Color
 import java.awt.Paint
 import java.awt.Shape
@@ -135,15 +135,14 @@ class SvgParser(
         var extraId: Long = 0
         svg.traverse(
             onElementPreprocess = { element ->
-                (element as? SVGStylableElement)?.mergeStyle()
-                (element as? SVGOMUseElement)?.mergeHref()
-                val style = (element as? SVGStylableElement)?.style
-                val styleDisplayValue = style?.getPropertyValue("display")
-                val visibleElement = (styleDisplayValue != "none")
+                val styles = (element as? SVGStylableElement)?.getComputedStyleMap(null)
+                val styleDisplayValue = styles?.getValue(SVGCSSEngine.DISPLAY_INDEX)?.stringValue ?: "inline"
+                val visibleElement = !styleDisplayValue.equals("none", ignoreCase = true)
                 val process = when {
                     (element is SVGOMDefsElement) ||
                             (element is SVGOMSymbolElement) ||
-                            (element is SVGOMClipPathElement) -> {
+                            (element is SVGOMClipPathElement) ||
+                            (element is SVGOMStyleElement) -> {
                         // Skip process element
                         false
                     }
@@ -185,7 +184,7 @@ class SvgParser(
                                 concatenate(graphicsNode.transform)
                             }.toMatrix()
                             val basicMatrix = (matrix.b == 0f && matrix.c == 0f)
-                            val ctm = if (basicMatrix) Matrix(1f, 0f, 0f, 1f, 0f, 0f) else matrix
+                            val ctm = if (basicMatrix) ImageVector.Matrix(1f, 0f, 0f, 1f, 0f, 0f) else matrix
                             if (!basicMatrix) {
                                 logger.debug("    matrix = $ctm")
                             }
@@ -251,21 +250,16 @@ class SvgParser(
                             )
                             groups.add(GroupInfo(element, group))
                         }
-                        val fill = element.style.getColor("fill")?.toBrush()
-                            ?: graphicsNode.getFillBrush(ctm)
-                        val fillAlpha =
-                            element.style.getNullablePropertyValue("fill-opacity")?.toFloat()
-                        val stroke = element.style.getColor("stroke")?.toBrush()
-                            ?: graphicsNode.getStrokeBrush(ctm)
-                        val strokeAlpha =
-                            element.style.getNullablePropertyValue("stroke-opacity")?.toFloat()
-                        val strokeLineWidth = element.style.getFloatPxValue("stroke-width")
-                        val strokeLineCap =
-                            element.style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
-                        val strokeLineJoin =
-                            element.style.getNullablePropertyValue("stroke-linejoin")
-                                ?.toStrokeJoin()
-                        val strokeLineMiter = element.style.getFloatPxValue("stroke-linemiter")
+                        val extra = element.getStyleExtra("")
+                        val styles = element.getComputedStyleMap(null)
+                        val fillBrush = graphicsNode.getFillBrush(ctm)
+                        val fill = if (fillBrush != null && fillBrush !is ImageVector.Brush.SolidColor) {
+                            fillBrush
+                        } else extra?.fill
+                        val strokeBrush = graphicsNode.getStrokeBrush(ctm)
+                        val stroke = if (strokeBrush != null && strokeBrush !is ImageVector.Brush.SolidColor) {
+                            strokeBrush
+                        } else extra?.stroke
                         var fillId: String? = null
                         var fillAlphaId: String? = null
                         var strokeId: String? = null
@@ -275,38 +269,38 @@ class SvgParser(
                         var strokeLineJoinId: String? = null
                         var strokeLineMiterId: String? = null
                         groups.reversed().forEach { group ->
-                            val extra = group.group.extra
-                            if (extra != null) {
-                                if (fill == null && fillId == null && extra.fill != null) {
-                                    fillId = extra.id
+                            val groupExtra = group.group.extra
+                            if (groupExtra != null) {
+                                if (fill == null && fillId == null && groupExtra.fill != null) {
+                                    fillId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::fill)
                                 }
-                                if (fillAlpha == null && fillAlphaId == null && extra.fillAlpha != null) {
-                                    fillAlphaId = extra.id
+                                if (extra?.fillAlpha == null && fillAlphaId == null && groupExtra.fillAlpha != null) {
+                                    fillAlphaId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)
                                 }
-                                if (stroke == null && strokeId == null && extra.stroke != null) {
-                                    strokeId = extra.id
+                                if (stroke == null && strokeId == null && groupExtra.stroke != null) {
+                                    strokeId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::stroke)
                                 }
-                                if (strokeAlpha == null && strokeAlphaId == null && extra.strokeAlpha != null) {
-                                    strokeAlphaId = extra.id
+                                if (extra?.strokeAlpha == null && strokeAlphaId == null && groupExtra.strokeAlpha != null) {
+                                    strokeAlphaId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeAlpha)
                                 }
-                                if (strokeLineWidth == null && strokeLineWidthId == null && extra.strokeLineWidth != null) {
-                                    strokeLineWidthId = extra.id
+                                if (extra?.strokeLineWidth == null && strokeLineWidthId == null && groupExtra.strokeLineWidth != null) {
+                                    strokeLineWidthId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineWidth)
                                 }
-                                if (strokeLineCap == null && strokeLineCapId == null && extra.strokeLineCap != null) {
-                                    strokeLineCapId = extra.id
+                                if (extra?.strokeLineCap == null && strokeLineCapId == null && groupExtra.strokeLineCap != null) {
+                                    strokeLineCapId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineCap)
                                 }
-                                if (strokeLineJoin == null && strokeLineJoinId == null && extra.strokeLineJoin != null) {
-                                    strokeLineJoinId = extra.id
+                                if (extra?.strokeLineJoin == null && strokeLineJoinId == null && groupExtra.strokeLineJoin != null) {
+                                    strokeLineJoinId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineJoin)
                                 }
-                                if (strokeLineMiter == null && strokeLineMiterId == null && extra.strokeLineMiter != null) {
-                                    strokeLineMiterId = extra.id
+                                if (extra?.strokeLineMiter == null && strokeLineMiterId == null && groupExtra.strokeLineMiter != null) {
+                                    strokeLineMiterId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::strokeLineMiter)
                                 }
                             }
@@ -353,13 +347,13 @@ class SvgParser(
                                 pathFillType = null,
                                 name = element.xmlId.ifEmpty { null },
                                 fill = fill,
-                                fillAlpha = fillAlpha,
+                                fillAlpha = extra?.fillAlpha,
                                 stroke = stroke,
-                                strokeAlpha = strokeAlpha,
-                                strokeLineWidth = strokeLineWidth,
-                                strokeLineCap = strokeLineCap,
-                                strokeLineJoin = strokeLineJoin,
-                                strokeLineMiter = strokeLineMiter,
+                                strokeAlpha = extra?.strokeAlpha,
+                                strokeLineWidth = extra?.strokeLineWidth,
+                                strokeLineCap = extra?.strokeLineCap,
+                                strokeLineJoin = extra?.strokeLineJoin,
+                                strokeLineMiter = extra?.strokeLineMiter,
                                 trimPathStart = null,
                                 trimPathEnd = null,
                                 trimPathOffset = null,
@@ -511,22 +505,26 @@ private fun SVGOMElement.children(): Sequence<SVGOMElement> {
     }
 }
 
-private fun AffineTransform.toMatrix(): Matrix {
+private fun AffineTransform.toMatrix(): ImageVector.Matrix {
     return SVGOMMatrix(this).toMatrix()
 }
 
+/**
+ * get locally applied styles, except inherited styles
+ */
 private fun SVGStylableElement.getStyleExtra(
     extraId: String,
 ): ImageVector.VectorNode.VectorGroup.Extra? {
     var extra: ImageVector.VectorNode.VectorGroup.Extra? = null
-    val fill = style.getColor("fill")?.toBrush()
-    val fillAlpha = style.getNullablePropertyValue("fill-opacity")?.toFloat()
-    val stroke = style.getColor("stroke")?.toBrush()
-    val strokeAlpha = style.getNullablePropertyValue("stroke-opacity")?.toFloat()
-    val strokeLineWidth = style.getFloatPxValue("stroke-width")
-    val strokeLineCap = style.getNullablePropertyValue("stroke-linecap")?.toStrokeCap()
-    val strokeLineJoin = style.getNullablePropertyValue("stroke-linejoin")?.toStrokeJoin()
-    val strokeLineMiter = style.getNullablePropertyValue("stroke-miterlimit")?.toFloat()
+    val styles = getComputedStyleMap(null)
+    val fill = styles.getLocalValue(SVGCSSEngine.FILL_INDEX)?.toColor()?.toBrush()
+    val fillAlpha = styles.getLocalValue(SVGCSSEngine.FILL_OPACITY_INDEX)?.toOpacity()
+    val stroke = styles.getLocalValue(SVGCSSEngine.STROKE_INDEX)?.toColor()?.toBrush()
+    val strokeAlpha = styles.getLocalValue(SVGCSSEngine.STROKE_OPACITY_INDEX)?.toOpacity()
+    val strokeLineWidth = styles.getLocalValue(SVGCSSEngine.STROKE_WIDTH_INDEX)?.floatValue
+    val strokeLineCap = styles.getLocalValue(SVGCSSEngine.STROKE_LINECAP_INDEX)?.stringValue?.toStrokeCap()
+    val strokeLineJoin = styles.getLocalValue(SVGCSSEngine.STROKE_LINEJOIN_INDEX)?.stringValue?.toStrokeJoin()
+    val strokeLineMiter = styles.getLocalValue(SVGCSSEngine.STROKE_MITERLIMIT_INDEX)?.toMiterLimit()
     if ((fill != null) ||
         (fillAlpha != null) ||
         (stroke != null) ||
@@ -604,13 +602,14 @@ private fun ImageVector.Color.toBrush(): ImageVector.Brush {
     return ImageVector.Brush.SolidColor(this)
 }
 
-private fun CSSStyleDeclaration.getNullablePropertyValue(name: String): String? {
-    return getPropertyValue(name).ifEmpty { null }
+private fun StyleMap.getLocalValue(cssIndex: Int): Value? {
+    return if (!isInherited(cssIndex))
+        getValue(cssIndex)
+    else null
 }
 
-private fun CSSStyleDeclaration.getColor(name: String): ImageVector.Color? {
-    val cssValue = (getPropertyCSSValue(name) as? CSSOMSVGStyleDeclaration.StyleDeclarationPaintValue)
-    val value = cssValue?.value
+private fun Value.toColor(): ImageVector.Color? {
+    val value = if (this is ComputedValue) cascadedValue else this
     return when {
         (value is RGBAColorValue) -> {
             ImageVector.RgbColor(
@@ -621,7 +620,7 @@ private fun CSSStyleDeclaration.getColor(name: String): ImageVector.Color? {
             )
         }
 
-        (value?.primitiveType == CSSPrimitiveValue.CSS_RGBCOLOR) -> {
+        (value.primitiveType == CSSPrimitiveValue.CSS_RGBCOLOR) -> {
             ImageVector.RgbColor(
                 red = value.red.getColorValue(),
                 green = value.green.getColorValue(),
@@ -629,43 +628,57 @@ private fun CSSStyleDeclaration.getColor(name: String): ImageVector.Color? {
             )
         }
 
-        (value?.primitiveType == CSSPrimitiveValue.CSS_IDENT) -> {
+        (value.primitiveType == CSSPrimitiveValue.CSS_IDENT) -> {
             // color name
             val colorName = value.stringValue.lowercase()
             val colorNameLowercase = value.stringValue.lowercase()
-            if (colorNameLowercase == "transparent") {
-                ImageVector.Transparent
-            } else {
-                val color = when (colorNameLowercase) {
-                    "aqua" -> SVGColor.aqua
-                    "black" -> SVGColor.black
-                    "blue" -> SVGColor.blue
-                    "fuchsia" -> SVGColor.fuchsia
-                    "gray" -> SVGColor.gray
-                    "green" -> SVGColor.green
-                    "lime" -> SVGColor.lime
-                    "maroon" -> SVGColor.maroon
-                    "navy" -> SVGColor.navy
-                    "olive" -> SVGColor.olive
-                    "purple" -> SVGColor.purple
-                    "red" -> SVGColor.red
-                    "silver" -> SVGColor.silver
-                    "teal" -> SVGColor.teal
-                    "white" -> SVGColor.white
-                    "yellow" -> SVGColor.yellow
-                    else -> error("unknown color name: $colorName")
+            when (colorNameLowercase) {
+                "none" -> {
+                    null
                 }
-                ImageVector.RgbColor(
-                    red = color.red,
-                    green = color.green,
-                    blue = color.blue,
-                    alpha = color.alpha
-                )
+                "transparent" -> {
+                    ImageVector.Transparent
+                }
+                else -> {
+                    val color = when (colorNameLowercase) {
+                        "aqua" -> SVGColor.aqua
+                        "black" -> SVGColor.black
+                        "blue" -> SVGColor.blue
+                        "fuchsia" -> SVGColor.fuchsia
+                        "gray" -> SVGColor.gray
+                        "green" -> SVGColor.green
+                        "lime" -> SVGColor.lime
+                        "maroon" -> SVGColor.maroon
+                        "navy" -> SVGColor.navy
+                        "olive" -> SVGColor.olive
+                        "purple" -> SVGColor.purple
+                        "red" -> SVGColor.red
+                        "silver" -> SVGColor.silver
+                        "teal" -> SVGColor.teal
+                        "white" -> SVGColor.white
+                        "yellow" -> SVGColor.yellow
+                        else -> error("unknown color name: $colorName")
+                    }
+                    ImageVector.RgbColor(
+                        red = color.red,
+                        green = color.green,
+                        blue = color.blue,
+                        alpha = color.alpha
+                    )
+                }
             }
         }
 
         else -> null
     }
+}
+
+private fun Value.toOpacity(): Float {
+    return PaintServer.convertOpacity(this)
+}
+
+private fun Value.toMiterLimit(): Float {
+    return PaintServer.convertStrokeMiterlimit(this)
 }
 
 private fun Value.getColorValue(): Int {
@@ -675,10 +688,6 @@ private fun Value.getColorValue(): Int {
     } else {
         floatValue.toInt()
     }
-}
-
-private fun CSSStyleDeclaration.getFloatPxValue(name: String): Float? {
-    return (getPropertyCSSValue(name) as? CSSPrimitiveValue)?.getFloatValue(CSSPrimitiveValue.CSS_PX)
 }
 
 private fun String.toStrokeCap(): ImageVector.StrokeCap? {
@@ -717,40 +726,6 @@ private fun LexicalUnit.sequence(): Sequence<LexicalUnit> {
             yield(current)
             current = current.nextLexicalUnit
         }
-    }
-}
-
-/**
- * merge SVG presentation attributes to style attributes
- */
-private fun SVGStylableElement.mergeStyle() {
-    listOf(
-        "display",
-        "stroke",
-        "stroke-opacity",
-        "stroke-width",
-        "stroke-linecap",
-        "stroke-linejoin",
-        "stroke-miterlimit",
-        "fill",
-        "fill-opacity",
-    ).forEach { name ->
-        val attributeValue = (attributes.getNamedItem(name) as? GenericAttr)?.value
-        if (style.getPropertyValue(name).isEmpty() && attributeValue != null) {
-            style.setProperty(name, attributeValue, "")
-        }
-    }
-    setAttribute("style", style.cssText)
-}
-
-/**
- * merge "xlink:href" to "href"
- */
-private fun SVGOMUseElement.mergeHref() {
-    val href = getAttribute("href").ifEmpty { null }
-    if (href == null) {
-        val xlinkHref = getAttributeNS("http://www.w3.org/1999/xlink", "href")
-        setAttribute("href", xlinkHref)
     }
 }
 

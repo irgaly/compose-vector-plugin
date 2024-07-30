@@ -77,5 +77,12 @@ val svg = """
   </defs>
   <rect width="100" height="100" fill="url(#grad1)"/>
   <rect width="100" height="100" fill="url(#grad2)"/>
+  <style>
+    .red {
+      stroke: red;
+      stroke-width: 1;
+    }
+  </style>
+  <rect width="10" height="10" class="red"/>
 </svg>
 """
