@@ -9,20 +9,26 @@ import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
 import org.apache.batik.anim.dom.SVGOMCircleElement
 import org.apache.batik.anim.dom.SVGOMClipPathElement
+import org.apache.batik.anim.dom.SVGOMCursorElement
 import org.apache.batik.anim.dom.SVGOMDefsElement
+import org.apache.batik.anim.dom.SVGOMDescElement
 import org.apache.batik.anim.dom.SVGOMDocument
 import org.apache.batik.anim.dom.SVGOMElement
 import org.apache.batik.anim.dom.SVGOMEllipseElement
 import org.apache.batik.anim.dom.SVGOMGElement
 import org.apache.batik.anim.dom.SVGOMLineElement
+import org.apache.batik.anim.dom.SVGOMMetadataElement
 import org.apache.batik.anim.dom.SVGOMPathElement
 import org.apache.batik.anim.dom.SVGOMPolygonElement
 import org.apache.batik.anim.dom.SVGOMPolylineElement
 import org.apache.batik.anim.dom.SVGOMRectElement
 import org.apache.batik.anim.dom.SVGOMSVGElement
+import org.apache.batik.anim.dom.SVGOMScriptElement
 import org.apache.batik.anim.dom.SVGOMStyleElement
 import org.apache.batik.anim.dom.SVGOMSymbolElement
+import org.apache.batik.anim.dom.SVGOMTitleElement
 import org.apache.batik.anim.dom.SVGOMUseElement
+import org.apache.batik.anim.dom.SVGOMViewElement
 import org.apache.batik.anim.dom.SVGStylableElement
 import org.apache.batik.bridge.AbstractSVGGradientElementBridge
 import org.apache.batik.bridge.AbstractSVGGradientElementBridge.SVGStopElementBridge
@@ -79,8 +85,10 @@ import org.w3c.dom.Element
 import org.w3c.dom.Node
 import org.w3c.dom.css.CSSPrimitiveValue
 import org.w3c.dom.css.CSSValue
+import org.w3c.dom.svg.SVGLinearGradientElement
 import org.w3c.dom.svg.SVGMatrix
 import org.w3c.dom.svg.SVGPathSegList
+import org.w3c.dom.svg.SVGRadialGradientElement
 import java.awt.Color
 import java.awt.Paint
 import java.awt.Shape
@@ -141,10 +149,19 @@ class SvgParser(
                         !visibility.equals("hidden", ignoreCase = true)
                         )
                 val process = when {
-                    (element is SVGOMDefsElement) ||
+                    (element is SVGOMTitleElement) ||
+                            (element is SVGOMDescElement) ||
+                            (element is SVGOMMetadataElement) ||
+                            (element is SVGOMViewElement) ||
+                            (element is SVGOMScriptElement) ||
+                            (element is SVGOMCursorElement) ||
+                            (element is SVGOMDefsElement) ||
                             (element is SVGOMSymbolElement) ||
+                            (element is SVGOMStyleElement) ||
                             (element is SVGOMClipPathElement) ||
-                            (element is SVGOMStyleElement) -> {
+                            (element is SVGLinearGradientElement) ||
+                            (element is SVGRadialGradientElement)
+                    -> {
                         // Skip process element
                         false
                     }
@@ -374,6 +391,7 @@ class SvgParser(
                     }
 
                     else -> {
+                        // SVG elements: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
                         logger.error("Unsupported element: ${element.toDebugString()}")
                         error("Unsupported element: ${element.toDebugString()}")
                     }
