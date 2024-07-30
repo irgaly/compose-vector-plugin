@@ -84,5 +84,6 @@ val svg = """
     }
   </style>
   <rect width="10" height="10" class="red"/>
+  <rect width="10" height="10" fill="lightgreen"/>
 </svg>
 """

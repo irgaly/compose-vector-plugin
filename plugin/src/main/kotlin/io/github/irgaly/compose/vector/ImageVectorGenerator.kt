@@ -710,11 +710,11 @@ private fun ImageVector.Brush.toCodeBlock(): CodeBlock {
 private fun ImageVector.Color.toCodeBlock(): CodeBlock {
     return buildCodeBlock {
         when (this@toCodeBlock) {
-            is ImageVector.Transparent -> {
+            is ImageVector.ComposeColor -> {
                 add(
-                    "%M.Transparent",
-                    MemberNames.SolidColor,
-                    MemberNames.Color
+                    "%M.%L",
+                    MemberNames.Color,
+                    name
                 )
             }
 

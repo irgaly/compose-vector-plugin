@@ -124,7 +124,9 @@ data class ImageVector(
         }
     }
 
-    data object Transparent : Color
+    data class ComposeColor(
+        val name: String
+    ) : Color
     sealed interface PathNode {
         data class ArcTo(
             val horizontalEllipseRadius: Float,

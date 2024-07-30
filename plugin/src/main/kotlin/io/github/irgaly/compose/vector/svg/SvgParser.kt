@@ -44,11 +44,13 @@ import org.apache.batik.css.engine.StyleMap
 import org.apache.batik.css.engine.value.AbstractColorManager
 import org.apache.batik.css.engine.value.AbstractValue
 import org.apache.batik.css.engine.value.ComputedValue
+import org.apache.batik.css.engine.value.FloatValue
 import org.apache.batik.css.engine.value.ShorthandManager
 import org.apache.batik.css.engine.value.StringValue
 import org.apache.batik.css.engine.value.Value
 import org.apache.batik.css.engine.value.ValueConstants.NUMBER_0
 import org.apache.batik.css.engine.value.ValueManager
+import org.apache.batik.css.engine.value.svg.SVGColorManager
 import org.apache.batik.css.parser.CSSLexicalUnit
 import org.apache.batik.css.parser.ExtendedParser
 import org.apache.batik.css.parser.LexicalUnits
@@ -251,7 +253,6 @@ class SvgParser(
                             groups.add(GroupInfo(element, group))
                         }
                         val extra = element.getStyleExtra("")
-                        val styles = element.getComputedStyleMap(null)
                         val fillBrush = graphicsNode.getFillBrush(ctm)
                         val fill = if (fillBrush != null && fillBrush !is ImageVector.Brush.SolidColor) {
                             fillBrush
@@ -629,41 +630,46 @@ private fun Value.toColor(): ImageVector.Color? {
         }
 
         (value.primitiveType == CSSPrimitiveValue.CSS_IDENT) -> {
-            // color name
-            val colorName = value.stringValue.lowercase()
             val colorNameLowercase = value.stringValue.lowercase()
+            // Support Compose Colors
+            // https://developer.android.com/reference/kotlin/androidx/compose/ui/graphics/Color
             when (colorNameLowercase) {
                 "none" -> {
                     null
                 }
                 "transparent" -> {
-                    ImageVector.Transparent
+                    ImageVector.ComposeColor("Transparent")
+                }
+                "black" -> {
+                    ImageVector.ComposeColor("Black")
+                }
+                "white" -> {
+                    ImageVector.ComposeColor("White")
+                }
+                "red" -> {
+                    ImageVector.ComposeColor("Red")
+                }
+                "lime" -> {
+                    ImageVector.ComposeColor("Green")
+                }
+                "blue" -> {
+                    ImageVector.ComposeColor("Blue")
+                }
+                "yellow" -> {
+                    ImageVector.ComposeColor("Yellow")
+                }
+                "cyan", "aqua" -> {
+                    ImageVector.ComposeColor("Cyan")
+                }
+                "fuchsia", "magenta" -> {
+                    ImageVector.ComposeColor("Magenta")
                 }
                 else -> {
-                    val color = when (colorNameLowercase) {
-                        "aqua" -> SVGColor.aqua
-                        "black" -> SVGColor.black
-                        "blue" -> SVGColor.blue
-                        "fuchsia" -> SVGColor.fuchsia
-                        "gray" -> SVGColor.gray
-                        "green" -> SVGColor.green
-                        "lime" -> SVGColor.lime
-                        "maroon" -> SVGColor.maroon
-                        "navy" -> SVGColor.navy
-                        "olive" -> SVGColor.olive
-                        "purple" -> SVGColor.purple
-                        "red" -> SVGColor.red
-                        "silver" -> SVGColor.silver
-                        "teal" -> SVGColor.teal
-                        "white" -> SVGColor.white
-                        "yellow" -> SVGColor.yellow
-                        else -> error("unknown color name: $colorName")
-                    }
+                    check(this is ComputedValue)
                     ImageVector.RgbColor(
-                        red = color.red,
-                        green = color.green,
-                        blue = color.blue,
-                        alpha = color.alpha
+                        red = red.floatValue.toInt(),
+                        green = green.floatValue.toInt(),
+                        blue = blue.floatValue.toInt(),
                     )
                 }
             }
@@ -876,12 +882,21 @@ private class SVG120DOMImplementationCSS3ColorFix : SVG12DOMImplementation() {
     }
 }
 
+/**
+ * Support rgba() and CSS Color Module Level 4 named colors
+ * https://drafts.csswg.org/css-color/#named-colors
+ */
 private class AbstractColorManagerCSS3ColorFix(
     private val original: AbstractColorManager,
 ): AbstractColorManager() {
     init {
         values.put("transparent", StringValue(CSSPrimitiveValue.CSS_IDENT, "transparent"))
+        values.put("rebeccapurple", StringValue(CSSPrimitiveValue.CSS_IDENT, "rebeccapurple"))
         computedValues.put("transparent", RGBAColorValue(NUMBER_0, NUMBER_0, NUMBER_0, NUMBER_0))
+        computedValues.put("rebeccapurple", RGBAColorValue(102f, 51f, 153f, 255f))
+        // other CSS Color Module Level 3 colors will be handled by
+        // * org.apache.batik.css.engine.value.svg.SVGColorManager
+        // * org.apache.batik.css.engine.value.svg.ColorManager
     }
 
     override fun createValue(lu: LexicalUnit, engine: CSSEngine): Value {
@@ -927,6 +942,14 @@ private class RGBAColorValue(
     private val b: Value,
     private val a: Value,
 ) : AbstractValue() {
+    constructor(r: Float, g: Float, b: Float, a: Float):
+        this(
+            r = FloatValue(CSSPrimitiveValue.CSS_NUMBER, r),
+            g = FloatValue(CSSPrimitiveValue.CSS_NUMBER, g),
+            b = FloatValue(CSSPrimitiveValue.CSS_NUMBER, b),
+            a = FloatValue(CSSPrimitiveValue.CSS_NUMBER, a),
+        )
+
     override fun getPrimitiveType(): Short {
         return CSSPrimitiveValue.CSS_RGBCOLOR
     }
@@ -1374,7 +1397,7 @@ private fun Paint.toBrush(transform: AffineTransform): ImageVector.Brush {
 
 private fun Color.toImageVectorColor(): ImageVector.Color {
     return if (alpha == 0) {
-        ImageVector.Transparent
+        ImageVector.ComposeColor("Transparent")
     } else {
         ImageVector.RgbColor(
             red = red,
