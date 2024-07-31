@@ -5,6 +5,7 @@ import io.github.irgaly.compose.vector.node.ImageVector
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
 import org.apache.batik.anim.dom.SVG12DOMImplementation
 import org.apache.batik.anim.dom.SVGGraphicsElement
+import org.apache.batik.anim.dom.SVGOMAElement
 import org.apache.batik.anim.dom.SVGOMAnimatedLength
 import org.apache.batik.anim.dom.SVGOMAnimatedRect
 import org.apache.batik.anim.dom.SVGOMCircleElement
@@ -186,6 +187,7 @@ class SvgParser(
                     is SVGOMSVGElement,
                     is SVGOMGElement,
                     is SVGOMUseElement,
+                    is SVGOMAElement,
                     -> {
                         check(element is SVGStylableElement)
                         check(graphicsNode != null)
