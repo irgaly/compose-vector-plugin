@@ -287,6 +287,7 @@ class SvgParser(
                         val stroke = if (strokeBrush != null && strokeBrush !is ImageVector.Brush.SolidColor) {
                             strokeBrush
                         } else extra?.stroke
+                        var pathFillTypeId: String? = null
                         var fillId: String? = null
                         var fillAlphaId: String? = null
                         var strokeId: String? = null
@@ -298,6 +299,10 @@ class SvgParser(
                         groups.reversed().forEach { group ->
                             val groupExtra = group.group.extra
                             if (groupExtra != null) {
+                                if (extra?.pathFillType == null && pathFillTypeId == null && groupExtra.pathFillType != null) {
+                                    pathFillTypeId = groupExtra.id
+                                    group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::pathFillType)
+                                }
                                 if (fill == null && fillId == null && groupExtra.fill != null) {
                                     fillId = groupExtra.id
                                     group.referencedProperties.add(ImageVector.VectorNode.VectorGroup.Extra::fill)
@@ -332,7 +337,9 @@ class SvgParser(
                                 }
                             }
                         }
-                        val extraReference = if ((fillId != null) ||
+                        val extraReference = if (
+                            (pathFillTypeId != null) ||
+                            (fillId != null) ||
                             (fillAlphaId != null) ||
                             (strokeId != null) ||
                             (strokeAlphaId != null) ||
@@ -342,6 +349,7 @@ class SvgParser(
                             (strokeLineMiterId != null)
                         ) {
                             ImageVector.VectorNode.VectorPath.ExtraReference(
+                                pathFillTypeId = pathFillTypeId,
                                 fillId = fillId,
                                 fillAlphaId = fillAlphaId,
                                 strokeId = strokeId,
@@ -371,7 +379,7 @@ class SvgParser(
                         groups.last().nodes.add(
                             ImageVector.VectorNode.VectorPath(
                                 pathData = pathData,
-                                pathFillType = null,
+                                pathFillType = extra?.pathFillType,
                                 name = element.xmlId.ifEmpty { null },
                                 fill = fill,
                                 fillAlpha = extra?.fillAlpha,
@@ -483,6 +491,7 @@ class SvgParser(
             return if (group.extra != null && referencedProperties.isNotEmpty()) {
                 ImageVector.VectorNode.VectorGroup.Extra(
                     id = group.extra.id,
+                    pathFillType = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::pathFillType)) group.extra.pathFillType else null,
                     fill = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::fill)) group.extra.fill else null,
                     fillAlpha = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::fillAlpha)) group.extra.fillAlpha else null,
                     stroke = if (referencedProperties.contains(ImageVector.VectorNode.VectorGroup.Extra::stroke)) group.extra.stroke else null,
@@ -566,6 +575,8 @@ private fun SVGStylableElement.getStyleExtra(
 ): ImageVector.VectorNode.VectorGroup.Extra? {
     var extra: ImageVector.VectorNode.VectorGroup.Extra? = null
     val styles = getComputedStyleMap(null)
+    val pathFillType =
+        styles.getLocalValue(SVGCSSEngine.FILL_RULE_INDEX)?.stringValue?.toPathFillType()
     val fill = styles.getLocalValue(SVGCSSEngine.FILL_INDEX)?.toColor()?.toBrush()
     val fillAlpha = styles.getLocalValue(SVGCSSEngine.FILL_OPACITY_INDEX)?.toOpacity()
     val stroke = styles.getLocalValue(SVGCSSEngine.STROKE_INDEX)?.toColor()?.toBrush()
@@ -574,7 +585,9 @@ private fun SVGStylableElement.getStyleExtra(
     val strokeLineCap = styles.getLocalValue(SVGCSSEngine.STROKE_LINECAP_INDEX)?.stringValue?.toStrokeCap()
     val strokeLineJoin = styles.getLocalValue(SVGCSSEngine.STROKE_LINEJOIN_INDEX)?.stringValue?.toStrokeJoin()
     val strokeLineMiter = styles.getLocalValue(SVGCSSEngine.STROKE_MITERLIMIT_INDEX)?.toMiterLimit()
-    if ((fill != null) ||
+    if (
+        (pathFillType != null) ||
+        (fill != null) ||
         (fillAlpha != null) ||
         (stroke != null) ||
         (strokeAlpha != null) ||
@@ -585,6 +598,7 @@ private fun SVGStylableElement.getStyleExtra(
     ) {
         extra = ImageVector.VectorNode.VectorGroup.Extra(
             id = extraId,
+            pathFillType = pathFillType,
             fill = fill,
             fillAlpha = fillAlpha,
             stroke = stroke,
@@ -741,6 +755,16 @@ private fun Value.getColorValue(): Int {
         (percentage * 255f / 100f).toInt()
     } else {
         floatValue.toInt()
+    }
+}
+
+private fun String.toPathFillType(): ImageVector.PathFillType? {
+    return if (equals("nonzero", ignoreCase = true)) {
+        ImageVector.PathFillType.NonZero
+    } else if (equals("evenodd", ignoreCase = true)) {
+        ImageVector.PathFillType.EvenOdd
+    } else {
+        error("invalid path-rule: $this")
     }
 }
 

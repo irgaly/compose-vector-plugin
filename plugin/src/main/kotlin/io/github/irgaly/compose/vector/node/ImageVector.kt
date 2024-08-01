@@ -36,6 +36,7 @@ data class ImageVector(
         ) : VectorNode {
             data class Extra(
                 val id: String,
+                val pathFillType: PathFillType? = null,
                 val fill: Brush? = null,
                 val fillAlpha: Float? = null,
                 val stroke: Brush? = null,
@@ -65,6 +66,7 @@ data class ImageVector(
             val extraReference: ExtraReference? = null
         ) : VectorNode {
             data class ExtraReference(
+                val pathFillTypeId: String? = null,
                 val fillId: String? = null,
                 val fillAlphaId: String? = null,
                 val strokeId: String? = null,
