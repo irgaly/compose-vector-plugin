@@ -22,7 +22,10 @@ suspend fun main(@Suppress("UNUSED_PARAMETER") args: Array<String>) {
         override fun error(message: String, error: Exception?) {
             println("error: $message | $error")
         }
-    }).parse(input)
+    }).parse(
+        input,
+        name = "Icon"
+    )
     val codes = ImageVectorGenerator().generate(
         imageVector,
         "io.github.irgaly.icons",

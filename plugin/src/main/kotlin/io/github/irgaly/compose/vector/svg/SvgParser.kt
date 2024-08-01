@@ -110,7 +110,11 @@ class SvgParser(
      * @throws IOException
      * @throws IllegalStateException parse error
      */
-    fun parse(input: InputStream): ImageVector {
+    fun parse(
+        input: InputStream,
+        name: String,
+        autoMirror: Boolean = false,
+    ): ImageVector {
         val document = try {
             SAXSVGDocumentFactoryCSS3ColorFix(
                 XMLResourceDescriptor.getXMLParserClassName()
@@ -455,12 +459,12 @@ class SvgParser(
         )
         val root = groups.first()
         val imageVector = ImageVector(
-            name = "IconName",
+            name = name,
             defaultWidth = width.toDouble(),
             defaultHeight = height.toDouble(),
             viewportWidth = viewBoxWidth,
             viewportHeight = viewBoxHeight,
-            autoMirror = false,
+            autoMirror = autoMirror,
             rootGroup = root.group.copy(
                 nodes = root.nodes.toList(),
                 referencedExtra = root.getReferencedExtra()
