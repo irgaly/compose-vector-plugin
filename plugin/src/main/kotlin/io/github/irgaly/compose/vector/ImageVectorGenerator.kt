@@ -17,11 +17,13 @@ import io.github.irgaly.compose.vector.node.ImageVector
 class ImageVectorGenerator {
     fun generate(
         imageVector: ImageVector,
-        destinationPackage: String,
+        destinationClassPackage: String,
+        destinationClassNames: List<String>,
+        extensionPackage: String,
     ): String {
-        val destinationClass = ClassName(destinationPackage, "Icons")
+        val baseClass = ClassName(destinationClassPackage, *destinationClassNames.toTypedArray())
         val builder = FileSpec.builder(
-            packageName = destinationPackage,
+            packageName = extensionPackage,
             fileName = "${imageVector.name}.kt"
         )
         val backingProperty = PropertySpec.builder(
@@ -38,7 +40,7 @@ class ImageVectorGenerator {
                 .addMember(
                     "%S", "RedundantVisibilityModifier"
                 ).build()
-        ).receiver(destinationClass)
+        ).receiver(baseClass)
             .getter(
                 FunSpec.getterBuilder()
                     .addCode(

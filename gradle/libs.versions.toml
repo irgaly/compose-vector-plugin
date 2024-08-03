@@ -1,9 +1,10 @@
 [versions]
-sampleplugin = "0.1.0"
+composeVectorPlugin = "0.1.0"
 kotlin = "2.0.0"
 gradle-android = "8.4.2"
 
 [libraries]
+kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 android-gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle-android" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
 androidx-lifecycle = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.8.2" }
@@ -27,4 +28,4 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 android-application = { id = "com.android.application", version.ref = "gradle-android" }
 android-library = { id = "com.android.library", version.ref = "gradle-android" }
 publish = { id = "com.gradle.plugin-publish", version = "1.2.0" }
-sampleplugin = { id = "org.sample.plugin", version.ref = "sampleplugin" }
+composeVector = { id = "io.github.irgaly.compose.vector", version.ref = "composeVectorPlugin" }

@@ -4,24 +4,27 @@ plugins {
     signing
 }
 
-group = "org.sample.plugin"
-version = libs.versions.sampleplugin.get()
+group = "io.github.irgaly.compose.vector"
+version = libs.versions.composeVectorPlugin.get()
 
 gradlePlugin {
-    website = "https://github.com/example/example"
-    vcsUrl = "https://github.com/example/example"
+    website = "https://github.com/irgaly/compose-vector-plugin"
+    vcsUrl = "https://github.com/irgaly/compose-vector-plugin"
     plugins {
         create("plugin") {
-            id = "org.sample.plugin"
-            displayName = "Sample Plugin"
-            description = "A Sample Plugin"
-            tags = listOf("example")
-            implementationClass = "org.sample.GreetingPlugin"
+            id = "io.github.irgaly.compose.vector"
+            displayName = "Gradle Compose Vector Plugin"
+            description = "Convert SVG file to Compose ImageVector"
+            tags = listOf("compose")
+            implementationClass = "io.github.irgaly.compose.vector.ComposeVectorPlugin"
         }
     }
 }
 
 dependencies {
+    compileOnly(gradleKotlinDsl())
+    implementation(libs.kotlin.gradle)
+    implementation(libs.android.gradle)
     implementation(libs.xmlpull)
     implementation(libs.guava)
     implementation(libs.kotlinpoet)

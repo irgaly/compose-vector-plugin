@@ -1,5 +1,6 @@
-package org.sample.app
+package io.github.irgaly.compose.vector.sample
 
+import android.R
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
@@ -22,7 +23,7 @@ class MainActivity : AppCompatActivity() {
         window.navigationBarColor = Color.Transparent.toArgb()
         WindowInsetsControllerCompat(
             window,
-            findViewById(android.R.id.content)
+            findViewById(R.id.content)
         ).isAppearanceLightStatusBars = true
         setContent {
             MaterialTheme {

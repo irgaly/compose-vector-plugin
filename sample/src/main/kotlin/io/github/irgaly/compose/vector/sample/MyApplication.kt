@@ -1,4 +1,4 @@
-package org.sample.app
+package io.github.irgaly.compose.vector.sample
 
 import android.app.Application
 

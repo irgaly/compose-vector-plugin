@@ -27,8 +27,10 @@ suspend fun main(@Suppress("UNUSED_PARAMETER") args: Array<String>) {
         name = "Icon"
     )
     val codes = ImageVectorGenerator().generate(
-        imageVector,
-        "io.github.irgaly.icons",
+        imageVector = imageVector,
+        destinationClassPackage = "io.github.irgaly.icons",
+        destinationClassNames = listOf("Icons", "AutoMirrored", "Filled"),
+        extensionPackage = "io.github.irgaly.icons.automirrored.filled"
     )
     println("--- Output.kt")
     print(codes)

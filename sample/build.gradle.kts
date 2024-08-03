@@ -2,14 +2,14 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.sampleplugin)
+    alias(libs.plugins.composeVector)
 }
 
 android {
-    namespace = "org.sample.app"
+    namespace = "io.github.irgaly.compose.vector.sample"
     compileSdk = 34
     defaultConfig {
-        applicationId = "org.sample.app"
+        applicationId = "io.github.irgaly.compose.vector.sample"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -19,10 +19,6 @@ android {
 
 kotlin {
     jvmToolchain(17)
-}
-
-greeting {
-    who = "mate"
 }
 
 dependencies {
