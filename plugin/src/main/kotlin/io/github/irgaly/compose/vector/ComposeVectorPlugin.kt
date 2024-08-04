@@ -11,39 +11,35 @@ import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.io.File
 
 class ComposeVectorPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         val extension = target.extensions.create<ComposeVectorExtension>("composeVector")
-        val srcDir: File? = if (target.plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")) {
-            val sourceSet = target.extensions.findByType<KotlinMultiplatformExtension>()?.sourceSets?.findByName(
-                KotlinSourceSet.COMMON_MAIN_SOURCE_SET_NAME
-            )
-            sourceSet?.kotlin?.srcDirs?.firstOrNull()
-        } else {
-            val sourceSet = target.extensions.findByType<BaseExtension>()?.sourceSets?.findByName(
-                SourceSet.MAIN_SOURCE_SET_NAME
-            )
-            @Suppress("DEPRECATION")
-            val srcDirs = (sourceSet?.kotlin as? com.android.build.gradle.api.AndroidSourceDirectorySet)?.srcDirs
-            srcDirs?.firstOrNull {
-                (it.name == "kotlin")
-            }
-        }
-        if (srcDir == null) {
-            error("Cannot get source directory.")
-        }
+        val packageName = "io.github.irgaly.compose.vector.sample.icons"
+        val buildDirectory = target.layout.buildDirectory.dir("compose-vector")
+        val generatedSourceDirectory = buildDirectory.map { it.dir("src/main/kotlin") }
         val task = target.tasks.register<ComposeVectorTask>("generateImageVector") {
             group = "generate compose vector"
             inputDir.set(target.layout.projectDirectory.dir("images"))
-            outputDir.set(srcDir.resolve("io/github/irgaly/compose/vector/sample/icons"))
-            packageName.set("package_name")
+            outputDir.set(generatedSourceDirectory)
+            this.packageName.set(packageName)
         }
         target.tasks
             .withType<KotlinCompile>()
             .configureEach {
                 it.dependsOn(task)
             }
+        val srcDir = target.files(generatedSourceDirectory).builtBy(task)
+        if (target.plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")) {
+            val sourceSet = target.extensions.findByType<KotlinMultiplatformExtension>()?.sourceSets?.findByName(
+                KotlinSourceSet.COMMON_MAIN_SOURCE_SET_NAME
+            )
+            sourceSet?.kotlin?.srcDir(srcDir)
+        } else {
+            val sourceSet = target.extensions.findByType<BaseExtension>()?.sourceSets?.findByName(
+                SourceSet.MAIN_SOURCE_SET_NAME
+            )
+            sourceSet?.kotlin?.srcDir(srcDir)
+        }
     }
 }
