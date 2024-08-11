@@ -7,7 +7,6 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileType
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.IgnoreEmptyDirectories
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputDirectory
@@ -17,6 +16,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.work.ChangeType
 import org.gradle.work.Incremental
 import org.gradle.work.InputChanges
+import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.name
 import kotlin.io.path.pathString
@@ -25,7 +25,6 @@ import kotlin.io.path.pathString
 abstract class ComposeVectorTask: DefaultTask() {
     @get:Incremental
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    @get:IgnoreEmptyDirectories
     @get:InputDirectory
     abstract val inputDir: DirectoryProperty
 
@@ -53,9 +52,7 @@ abstract class ComposeVectorTask: DefaultTask() {
                 val outputDirectory = packageDirectory.dir(outputDirectoryRelativePath.pathString)
                 val destinationPropertyName = svgFile.nameWithoutExtension.toKotlinName()
                 val destinationClassNames = outputDirectoryRelativePath.segments().map {
-                    if (it.equals("automirrored", ignoreCase = true)) {
-                        "AutoMirrored"
-                    } else it.toKotlinName()
+                    it.toKotlinClassName()
                 }.toList()
                 val extensionPackage = listOf(
                     packageName,
@@ -73,7 +70,7 @@ abstract class ComposeVectorTask: DefaultTask() {
                                 parser.parse(
                                     input = stream,
                                     name = destinationPropertyName,
-                                    autoMirror = false
+                                    autoMirror = destinationClassNames.contains("AutoMirrored")
                                 )
                             }
                             val kotlinSource = generator.generate(
@@ -96,6 +93,23 @@ abstract class ComposeVectorTask: DefaultTask() {
                         outputDirectory.asFile.delete()
                     }
                 }
+        }
+        inputDir.get().asFile.listFiles(File::isDirectory)?.forEach { rootDirectory ->
+            fun File.toObjectClass(): ImageVectorGenerator.ObjectClass {
+                return ImageVectorGenerator.ObjectClass(
+                    name = name.toKotlinClassName(),
+                    children = listFiles(File::isDirectory)?.sorted()?.map {
+                        it.toObjectClass()
+                    } ?: emptyList()
+                )
+            }
+
+            val objectClass = rootDirectory.toObjectClass()
+            val objectFileName = "${objectClass.name}.kt"
+            logger.info("write object file: $objectFileName")
+            packageDirectory.file(objectFileName).asFile.writeText(
+                generator.generateObjectClasses(objectClass, packageName)
+            )
         }
     }
 
@@ -165,6 +179,12 @@ abstract class ComposeVectorTask: DefaultTask() {
             .joinToString("")
             // add "_" if first character is a number
             .replace("^[0-9]".toRegex()) { "_${it.value}" }
+    }
+
+    private fun String.toKotlinClassName(): String {
+        return if (equals("automirrored", ignoreCase = true)) {
+            "AutoMirrored"
+        } else toKotlinName()
     }
 
     companion object {

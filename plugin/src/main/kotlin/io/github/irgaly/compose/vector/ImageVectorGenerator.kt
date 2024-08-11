@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.buildCodeBlock
 import io.github.irgaly.compose.icons.xml.setIndent
 import io.github.irgaly.compose.vector.node.ImageVector
@@ -271,7 +272,7 @@ class ImageVectorGenerator {
         ).addModifiers(
             KModifier.PRIVATE
         ).addCode(
-            "%M(%N, null)", MemberNames.Image, property,
+            "%M(${baseClass.simpleNames.joinToString(".")}.%N, null)", MemberNames.Image, property
         )
         builder.addFunction(preview1FunSpec.build())
         val preview2FunSpec = FunSpec.builder(
@@ -286,11 +287,43 @@ class ImageVectorGenerator {
         ).addModifiers(
             KModifier.PRIVATE
         ).addCode(
-            "%M(%N, null)", MemberNames.Image, property,
+            "%M(${baseClass.simpleNames.joinToString(".")}.%N, null)", MemberNames.Image, property
         )
         builder.addFunction(preview2FunSpec.build())
         return builder.setIndent().build().toString()
     }
+
+    fun generateObjectClasses(
+        classes: ObjectClass,
+        destinationClassPackage: String,
+    ): String {
+        val builder = FileSpec.builder(
+            packageName = destinationClassPackage,
+            fileName = "${classes.name}.kt"
+        )
+
+        fun objectClassToTypeSpec(objectClass: ObjectClass): TypeSpec {
+            return TypeSpec.objectBuilder(objectClass.name)
+                .apply {
+                    objectClass.children.forEach { child ->
+                        addType(objectClassToTypeSpec(child))
+                    }
+                }
+                .addAnnotation(
+                    AnnotationSpec.builder(Suppress::class)
+                        .addMember(
+                            "%S", "RedundantVisibilityModifier"
+                        ).build()
+                ).build()
+        }
+        builder.addType(objectClassToTypeSpec(classes))
+        return builder.setIndent().build().toString()
+    }
+
+    data class ObjectClass(
+        val name: String,
+        val children: List<ObjectClass>,
+    )
 
     private fun CodeBlock.Builder.addExtraReferenceCodeBlock(
         referencedExtra: ImageVector.VectorNode.VectorGroup.Extra
