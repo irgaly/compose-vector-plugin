@@ -4,12 +4,14 @@ import io.github.irgaly.compose.Logger
 import io.github.irgaly.compose.vector.ImageVectorGenerator
 import io.github.irgaly.compose.vector.svg.SvgParser
 import org.gradle.api.DefaultTask
+import org.gradle.api.Transformer
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileType
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -35,6 +37,19 @@ abstract class ComposeVectorTask: DefaultTask() {
     @get:Input
     abstract val packageName: Property<String>
 
+    @get:Input
+    @get:Optional
+    abstract val preClassNameTransformer: Property<Transformer<String, Pair<File, String>>>
+
+    @get:Input
+    @get:Optional
+    abstract val postClassNameTransformer: Property<Transformer<String, Pair<File, String>>>
+
+    @get:Input
+    @get:Optional
+    abstract
+    val packageNameTransformer: Property<Transformer<String, Pair<File, String>>>
+
     @TaskAction
     fun execute(inputChanges: InputChanges) {
         val outputBaseDirectory = outputDir.get()
@@ -57,14 +72,38 @@ abstract class ComposeVectorTask: DefaultTask() {
                 logger.info("changed: $change")
                 val svgFile = change.file
                 val outputDirectoryRelativePath = Path.of(change.normalizedPath).parent
+                    ?: error(
+                        """
+                        invalid file location: ${change.file}
+                        SVG file should have at least one parent directory that will be enclosing receiver class.
+                    """
+                    )
                 val outputDirectory = packageDirectory.dir(outputDirectoryRelativePath.pathString)
-                val destinationPropertyName = svgFile.nameWithoutExtension.toKotlinName()
-                val destinationClassNames = outputDirectoryRelativePath.segments().map {
-                    it.toKotlinClassName()
-                }.toList()
+                val destinationPropertyName = svgFile
+                    .nameWithoutExtension.let {
+                        preClassNameTransformer.orNull?.transform(Pair(svgFile, it)) ?: it
+                    }.toKotlinName().let {
+                        postClassNameTransformer.orNull?.transform(Pair(svgFile, it)) ?: it
+                    }
+                val destinationClassNames = (1..outputDirectoryRelativePath.nameCount).map {
+                    outputDirectoryRelativePath.subpath(0, it)
+                }.map { relativePath ->
+                    val directory = inputDir.dir(relativePath.pathString).get().asFile
+                    directory.name.toKotlinClassName(
+                        directory,
+                        preClassNameTransformer.orNull,
+                        postClassNameTransformer.orNull,
+                    )
+                }
                 val extensionPackage = listOf(
                     packageName,
-                    *outputDirectoryRelativePath.segments().toList().toTypedArray()
+                    *(1..outputDirectoryRelativePath.nameCount).map {
+                        outputDirectoryRelativePath.subpath(0, it)
+                    }.map { relativePath ->
+                        val directory = inputDir.dir(relativePath.pathString).get().asFile
+                        packageNameTransformer.orNull?.transform(Pair(directory, directory.name))
+                            ?: directory.name
+                    }.toTypedArray(),
                 ).joinToString(".")
                 val outputFile = outputDirectory.file("${destinationPropertyName}.kt")
                 when (change.changeType) {
@@ -105,7 +144,11 @@ abstract class ComposeVectorTask: DefaultTask() {
         inputDir.get().asFile.listFiles(File::isDirectory)?.forEach { rootDirectory ->
             fun File.toObjectClass(): ImageVectorGenerator.ObjectClass {
                 return ImageVectorGenerator.ObjectClass(
-                    name = name.toKotlinClassName(),
+                    name = name.toKotlinClassName(
+                        this,
+                        preClassNameTransformer.orNull,
+                        postClassNameTransformer.orNull
+                    ),
                     children = listFiles(File::isDirectory)?.sorted()?.map {
                         it.toObjectClass()
                     } ?: emptyList()
@@ -138,6 +181,22 @@ abstract class ComposeVectorTask: DefaultTask() {
             override fun error(message: String, error: Exception?) {
                 logger.error(message, error)
             }
+        }
+    }
+
+    private fun String.toKotlinClassName(
+        file: File,
+        preTransformer: Transformer<String, Pair<File, String>>?,
+        postTransformer: Transformer<String, Pair<File, String>>?,
+    ): String {
+        return this.let {
+            preTransformer?.transform(Pair(file, it)) ?: it
+        }.let {
+            if (it.equals("automirrored", ignoreCase = true)) {
+                "AutoMirrored"
+            } else it
+        }.toKotlinName().let {
+            postTransformer?.transform(Pair(file, it)) ?: it
         }
     }
 
@@ -187,12 +246,6 @@ abstract class ComposeVectorTask: DefaultTask() {
             .joinToString("")
             // add "_" if first character is a number
             .replace("^[0-9]".toRegex()) { "_${it.value}" }
-    }
-
-    private fun String.toKotlinClassName(): String {
-        return if (equals("automirrored", ignoreCase = true)) {
-            "AutoMirrored"
-        } else toKotlinName()
     }
 
     companion object {
