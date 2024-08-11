@@ -764,6 +764,6 @@ private fun ImageVector.Color.toCodeBlock(): CodeBlock {
  * 1.5 -> "1.5"
  * 1.0 -> "1"
  */
-fun Number.toShortValueString(): String {
+private fun Number.toShortValueString(): String {
     return toString().replace("\\.0$".toRegex(), "")
 }

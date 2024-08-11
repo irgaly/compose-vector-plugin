@@ -1,6 +1,7 @@
-package io.github.irgaly.compose.vector
+package io.github.irgaly.compose.vector.plugin
 
 import io.github.irgaly.compose.Logger
+import io.github.irgaly.compose.vector.ImageVectorGenerator
 import io.github.irgaly.compose.vector.svg.SvgParser
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty

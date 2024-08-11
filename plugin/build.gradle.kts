@@ -1,6 +1,9 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.publish)
+    alias(libs.plugins.nexus.publish)
     signing
 }
 
@@ -14,9 +17,9 @@ gradlePlugin {
         create("plugin") {
             id = "io.github.irgaly.compose.vector"
             displayName = "Gradle Compose Vector Plugin"
-            description = "Convert SVG file to Compose ImageVector"
+            description = "Gradle Plugin for Converting SVG file to Compose ImageVector"
             tags = listOf("compose")
-            implementationClass = "io.github.irgaly.compose.vector.ComposeVectorPlugin"
+            implementationClass = "io.github.irgaly.compose.vector.plugin.ComposeVectorPlugin"
         }
     }
 }
@@ -25,14 +28,15 @@ dependencies {
     compileOnly(gradleKotlinDsl())
     implementation(libs.kotlin.gradle)
     implementation(libs.android.gradle)
-    implementation(libs.xmlpull)
-    implementation(libs.guava)
-    implementation(libs.kotlinpoet)
-    implementation(libs.batik)
+    implementation(projects.core)
 }
 
-kotlin {
-    jvmToolchain(17)
+subprojects {
+    afterEvaluate {
+        extensions.findByType<KotlinProjectExtension>()?.apply {
+            jvmToolchain(17)
+        }
+    }
 }
 
 java {
@@ -47,8 +51,6 @@ signing {
     )
 }
 
-/*
-// For GItHub Actions CI signing
 if (providers.environmentVariable("CI").isPresent) {
     apply(plugin = "signing")
     extensions.configure<SigningExtension> {
@@ -58,4 +60,15 @@ if (providers.environmentVariable("CI").isPresent) {
         )
     }
 }
- */
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            // io.github.irgaly staging profile
+            stagingProfileId = "6c098027ed608f"
+            nexusUrl = uri("https://s01.oss.sonatype.org/service/local/")
+            snapshotRepositoryUrl =
+                uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+        }
+    }
+}

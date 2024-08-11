@@ -1,4 +1,4 @@
-package io.github.irgaly.compose.vector
+package io.github.irgaly.compose.vector.plugin
 
 import com.android.build.gradle.BaseExtension
 import org.gradle.api.Plugin
