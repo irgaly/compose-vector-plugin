@@ -26,25 +26,43 @@ import kotlin.io.path.pathString
 
 @CacheableTask
 abstract class ComposeVectorTask: DefaultTask() {
+    /**
+     * Image classes package
+     */
+    @get:Input
+    abstract val packageName: Property<String>
+
+    /**
+     * Vector files directory
+     */
     @get:Incremental
     @get:PathSensitive(PathSensitivity.RELATIVE)
     @get:InputDirectory
     abstract val inputDir: DirectoryProperty
 
+    /**
+     * Generated Kotlin Sources directory
+     */
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
-    @get:Input
-    abstract val packageName: Property<String>
-
+    /**
+     * Custom Class Name pre conversion logic to image class names and image receiver class names.
+     */
     @get:Input
     @get:Optional
     abstract val preClassNameTransformer: Property<Transformer<String, Pair<File, String>>>
 
+    /**
+     * Custom Class Name post conversion logic to image class names and image receiver class names.
+     */
     @get:Input
     @get:Optional
     abstract val postClassNameTransformer: Property<Transformer<String, Pair<File, String>>>
 
+    /**
+     * Custom Package Name conversion logic.
+     */
     @get:Input
     @get:Optional
     abstract

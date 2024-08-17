@@ -21,6 +21,10 @@ kotlin {
     jvmToolchain(17)
 }
 
+composeVector {
+    packageName = "io.github.irgaly.compose.vector.sample.image"
+}
+
 dependencies {
     implementation(dependencies.platform(libs.compose.bom))
     implementation(libs.androidx.appcompat)
