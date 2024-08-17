@@ -16,6 +16,6 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version ("0.8.0")
 }
 rootProject.name = "compose-vector-plugin"
-include(":sample")
-// if you want to use your plugin from Maven Plugin Portal, comment out below `includeBuild("plugin")` line.
+include(":sample:android")
+//include(":sample:jvm-library")
 includeBuild("plugin")
