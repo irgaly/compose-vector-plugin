@@ -18,11 +18,13 @@ import io.github.irgaly.compose.vector.node.ImageVector
 class ImageVectorGenerator {
     fun generate(
         imageVector: ImageVector,
-        destinationClassPackage: String,
-        destinationClassNames: List<String>,
+        destinationPackage: String,
+        receiverClasses: List<String>,
         extensionPackage: String,
     ): String {
-        val baseClass = ClassName(destinationClassPackage, *destinationClassNames.toTypedArray())
+        val receiverClass = if (receiverClasses.isNotEmpty()) {
+            ClassName(destinationPackage, *receiverClasses.toTypedArray())
+        } else null
         val builder = FileSpec.builder(
             packageName = extensionPackage,
             fileName = "${imageVector.name}.kt"
@@ -41,226 +43,305 @@ class ImageVectorGenerator {
                 .addMember(
                     "%S", "RedundantVisibilityModifier"
                 ).build()
-        ).receiver(baseClass)
-            .getter(
-                FunSpec.getterBuilder()
-                    .addCode(
-                        buildCodeBlock {
-                            beginControlFlow("if (%N != null)", backingProperty)
-                            addStatement("return %N!!", backingProperty)
-                            endControlFlow()
+        ).apply {
+            if (receiverClass != null) {
+                receiver(receiverClass)
+            }
+        }.getter(
+            FunSpec.getterBuilder()
+                .addCode(
+                    buildCodeBlock {
+                        beginControlFlow("if (%N != null)", backingProperty)
+                        addStatement("return %N!!", backingProperty)
+                        endControlFlow()
+                    }
+                ).addCode(
+                    buildCodeBlock {
+                        addStatement(
+                            "%N = %M(" +
+                                    /* name = */ "%S, " +
+                                    /* defaultWidth = */ "%L.%M, " +
+                                    /* defaultHeight = */ "%L.%M, " +
+                                    /* viewportWidth = */ "%Lf, " +
+                                    /* viewportHeight = */ "%Lf" +
+                                    (if (imageVector.autoMirror) ", autoMirror = true" else "") +
+                                    ").apply {",
+                            backingProperty,
+                            MemberNames.ImageVector.Builder,
+                            imageVector.name,
+                            imageVector.defaultWidth.toShortValueString(),
+                            MemberNames.Dp,
+                            imageVector.defaultHeight.toShortValueString(),
+                            MemberNames.Dp,
+                            imageVector.viewportWidth.toShortValueString(),
+                            imageVector.viewportHeight.toShortValueString(),
+                        )
+                        indent()
+                        val rootGroup = imageVector.rootGroup
+                        if (rootGroup.referencedExtra != null) {
+                            addExtraReferenceCodeBlock(rootGroup.referencedExtra)
                         }
-                    ).addCode(
-                        buildCodeBlock {
-                            addStatement(
-                                "%N = %M(" +
-                                        /* name = */ "%S, " +
-                                        /* defaultWidth = */ "%L.%M, " +
-                                        /* defaultHeight = */ "%L.%M, " +
-                                        /* viewportWidth = */ "%Lf, " +
-                                        /* viewportHeight = */ "%Lf" +
-                                        (if (imageVector.autoMirror) ", autoMirror = true" else "") +
-                                        ").apply {",
-                                backingProperty,
-                                MemberNames.ImageVector.Builder,
-                                imageVector.name,
-                                imageVector.defaultWidth.toShortValueString(),
-                                MemberNames.Dp,
-                                imageVector.defaultHeight.toShortValueString(),
-                                MemberNames.Dp,
-                                imageVector.viewportWidth.toShortValueString(),
-                                imageVector.viewportHeight.toShortValueString(),
-                            )
-                            indent()
-                            val rootGroup = imageVector.rootGroup
-                            if (rootGroup.referencedExtra != null) {
-                                addExtraReferenceCodeBlock(rootGroup.referencedExtra)
-                            }
-                            rootGroup.nodes.recursiveForEach(
-                                onGroupBegin = { node ->
-                                    val groupArguments = buildList<CodeBlock.Builder.() -> Unit> {
-                                        if (node.name != null) {
-                                            add { add("name = %S", node.name) }
-                                        }
-                                        if (node.rotate != null) {
-                                            add { add("rotate = %Lf", node.rotate.toShortValueString()) }
-                                        }
-                                        if (node.pivotX != null) {
-                                            add { add("pivotX = %Lf", node.pivotX.toShortValueString()) }
-                                        }
-                                        if (node.pivotY != null) {
-                                            add { add("pivotY = %Lf", node.pivotY.toShortValueString()) }
-                                        }
-                                        if (node.scaleX != null) {
-                                            add { add("scaleX = %Lf", node.scaleX.toShortValueString()) }
-                                        }
-                                        if (node.scaleY != null) {
-                                            add { add("scaleY = %Lf", node.scaleY.toShortValueString()) }
-                                        }
-                                        if (node.translationX != null) {
-                                            add { add("translationX = %Lf", node.translationX.toShortValueString()) }
-                                        }
-                                        if (node.translationY != null) {
-                                            add { add("translationY = %Lf", node.translationY.toShortValueString()) }
-                                        }
-                                        if (node.clipPathData.isNotEmpty()) {
-                                            add {
-                                                add("clipPathData = %M {\n", MemberNames.Vector.PathData)
-                                                indent()
-                                                node.clipPathData.forEach { pathNode ->
-                                                    add(pathNode.toCodeBlock())
-                                                    add("\n")
-                                                }
-                                                unindent()
-                                                add("}")
-                                            }
+                        rootGroup.nodes.recursiveForEach(
+                            onGroupBegin = { node ->
+                                val groupArguments = buildList<CodeBlock.Builder.() -> Unit> {
+                                    if (node.name != null) {
+                                        add { add("name = %S", node.name) }
+                                    }
+                                    if (node.rotate != null) {
+                                        add {
+                                            add(
+                                                "rotate = %Lf",
+                                                node.rotate.toShortValueString()
+                                            )
                                         }
                                     }
-                                    if (groupArguments.isNotEmpty()) {
-                                        add("%M(", MemberNames.Vector.Group)
-                                        groupArguments.forEachIndexed { index, block ->
-                                            if (0 < index) {
-                                                add(", ")
-                                            }
-                                            block()
+                                    if (node.pivotX != null) {
+                                        add {
+                                            add(
+                                                "pivotX = %Lf",
+                                                node.pivotX.toShortValueString()
+                                            )
                                         }
-                                        beginControlFlow(")")
-                                    } else {
-                                        beginControlFlow("%M", MemberNames.Vector.Group)
                                     }
-                                    if (node.referencedExtra != null) {
-                                        addExtraReferenceCodeBlock(node.referencedExtra)
+                                    if (node.pivotY != null) {
+                                        add {
+                                            add(
+                                                "pivotY = %Lf",
+                                                node.pivotY.toShortValueString()
+                                            )
+                                        }
                                     }
-                                },
-                                onGroupEnd = { _ ->
-                                    endControlFlow()
-                                },
-                                onPath = { node ->
-                                    val useTrim = ((node.trimPathStart != null) ||
-                                            (node.trimPathEnd != null) ||
-                                            (node.trimPathOffset != null))
-                                    if (useTrim) {
-                                        add("addPath(")
-                                    } else {
-                                        add("%M(", MemberNames.Vector.Path)
+                                    if (node.scaleX != null) {
+                                        add {
+                                            add(
+                                                "scaleX = %Lf",
+                                                node.scaleX.toShortValueString()
+                                            )
+                                        }
                                     }
-                                    buildList<CodeBlock.Builder.() -> Unit> {
-                                        if (useTrim) {
-                                            add {
-                                                add(/* pathData = */ "%M {\n",
-                                                    MemberNames.Vector.PathData
-                                                )
-                                                indent()
-                                                node.pathData.forEach { pathNode ->
-                                                    add(pathNode.toCodeBlock())
-                                                    add("\n")
-                                                }
-                                                unindent()
-                                                add("}")
+                                    if (node.scaleY != null) {
+                                        add {
+                                            add(
+                                                "scaleY = %Lf",
+                                                node.scaleY.toShortValueString()
+                                            )
+                                        }
+                                    }
+                                    if (node.translationX != null) {
+                                        add {
+                                            add(
+                                                "translationX = %Lf",
+                                                node.translationX.toShortValueString()
+                                            )
+                                        }
+                                    }
+                                    if (node.translationY != null) {
+                                        add {
+                                            add(
+                                                "translationY = %Lf",
+                                                node.translationY.toShortValueString()
+                                            )
+                                        }
+                                    }
+                                    if (node.clipPathData.isNotEmpty()) {
+                                        add {
+                                            add(
+                                                "clipPathData = %M {\n",
+                                                MemberNames.Vector.PathData
+                                            )
+                                            indent()
+                                            node.clipPathData.forEach { pathNode ->
+                                                add(pathNode.toCodeBlock())
+                                                add("\n")
                                             }
+                                            unindent()
+                                            add("}")
                                         }
-                                        if (node.pathFillType != null) {
-                                            add { add("pathFillType = %M.%L", MemberNames.PathFillType, node.pathFillType.name) }
-                                        }
-                                        if (node.name != null) {
-                                            add { add("name = %S", node.name) }
-                                        }
-                                        if (node.extraReference?.fillId != null) {
-                                            add {
-                                                add("fill = fill${node.extraReference.fillId}")
-                                            }
-                                        } else if (node.fill != null) {
-                                            add {
-                                                add("fill = ")
-                                                add(node.fill.toCodeBlock())
-                                            }
-                                        }
-                                        if (node.extraReference?.fillAlphaId != null) {
-                                            add {
-                                                add("fillAlpha = fillAlpha${node.extraReference.fillAlphaId}")
-                                            }
-                                        } else if (node.fillAlpha != null) {
-                                            add { add("fillAlpha = %Lf", node.fillAlpha.toShortValueString()) }
-                                        }
-                                        if (node.extraReference?.strokeId != null) {
-                                            add {
-                                                add("stroke = stroke${node.extraReference.strokeId}")
-                                            }
-                                        } else if (node.stroke != null) {
-                                            add {
-                                                add("stroke = ")
-                                                add(node.stroke.toCodeBlock())
-                                            }
-                                        }
-                                        if (node.extraReference?.strokeAlphaId != null) {
-                                            add {
-                                                add("strokeAlpha = strokeAlpha${node.extraReference.strokeAlphaId}")
-                                            }
-                                        } else if (node.strokeAlpha != null) {
-                                            add { add("strokeAlpha = %Lf", node.strokeAlpha.toShortValueString()) }
-                                        }
-                                        if (node.extraReference?.strokeLineWidthId != null) {
-                                            add {
-                                                add("strokeLineWidth = strokeLineWidth${node.extraReference.strokeLineWidthId}")
-                                            }
-                                        } else if (node.strokeLineWidth != null) {
-                                            add { add("strokeLineWidth = %Lf", node.strokeLineWidth.toShortValueString()) }
-                                        }
-                                        if (node.extraReference?.strokeLineCapId != null) {
-                                            add {
-                                                add("strokeLineCap = strokeLineCap${node.extraReference.strokeLineCapId}")
-                                            }
-                                        } else if (node.strokeLineCap != null) {
-                                            add { add("strokeLineCap = %M.%L", MemberNames.StrokeCap, node.strokeLineCap.name) }
-                                        }
-                                        if (node.extraReference?.strokeLineJoinId != null) {
-                                            add {
-                                                add("strokeLineJoin = strokeLineJoin${node.extraReference.strokeLineJoinId}")
-                                            }
-                                        } else if (node.strokeLineJoin != null) {
-                                            add { add("strokeLineJoin = %M.%L", MemberNames.StrokeJoin, node.strokeLineJoin.name) }
-                                        }
-                                        if (node.extraReference?.strokeLineMiterId != null) {
-                                            add {
-                                                add("strokeLineMiter = strokeLineMiter${node.extraReference.strokeLineMiterId}")
-                                            }
-                                        } else if (node.strokeLineMiter != null) {
-                                            add { add("strokeLineMiter = %Lf", node.strokeLineMiter.toShortValueString()) }
-                                        }
-                                        if (node.trimPathStart != null) {
-                                            add { add("trimPathStart = %Lf", node.trimPathStart) }
-                                        }
-                                        if (node.trimPathEnd != null) {
-                                            add { add("trimPathEnd = %Lf", node.trimPathEnd) }
-                                        }
-                                        if (node.trimPathOffset != null) {
-                                            add { add("trimPathOffset = %Lf", node.trimPathOffset) }
-                                        }
-                                    }.forEachIndexed { index, block ->
+                                    }
+                                }
+                                if (groupArguments.isNotEmpty()) {
+                                    add("%M(", MemberNames.Vector.Group)
+                                    groupArguments.forEachIndexed { index, block ->
                                         if (0 < index) {
                                             add(", ")
                                         }
                                         block()
                                     }
-                                    if (useTrim) {
-                                        addStatement(")")
-                                    } else {
-                                        beginControlFlow(")")
-                                        node.pathData.forEach { pathNode ->
-                                            add(pathNode.toCodeBlock())
-                                            add("\n")
-                                        }
-                                        endControlFlow()
-                                    }
+                                    beginControlFlow(")")
+                                } else {
+                                    beginControlFlow("%M", MemberNames.Vector.Group)
                                 }
-                            )
-                            unindent()
-                            addStatement("}.build()")
-                        }
-                    )
-                    .addStatement("return %N!!", backingProperty)
-                    .build()
-            ).build()
+                                if (node.referencedExtra != null) {
+                                    addExtraReferenceCodeBlock(node.referencedExtra)
+                                }
+                            },
+                            onGroupEnd = { _ ->
+                                endControlFlow()
+                            },
+                            onPath = { node ->
+                                val useTrim = ((node.trimPathStart != null) ||
+                                        (node.trimPathEnd != null) ||
+                                        (node.trimPathOffset != null))
+                                if (useTrim) {
+                                    add("addPath(")
+                                } else {
+                                    add("%M(", MemberNames.Vector.Path)
+                                }
+                                buildList<CodeBlock.Builder.() -> Unit> {
+                                    if (useTrim) {
+                                        add {
+                                            add(/* pathData = */ "%M {\n",
+                                                MemberNames.Vector.PathData
+                                            )
+                                            indent()
+                                            node.pathData.forEach { pathNode ->
+                                                add(pathNode.toCodeBlock())
+                                                add("\n")
+                                            }
+                                            unindent()
+                                            add("}")
+                                        }
+                                    }
+                                    if (node.pathFillType != null) {
+                                        add {
+                                            add(
+                                                "pathFillType = %M.%L",
+                                                MemberNames.PathFillType,
+                                                node.pathFillType.name
+                                            )
+                                        }
+                                    }
+                                    if (node.name != null) {
+                                        add { add("name = %S", node.name) }
+                                    }
+                                    if (node.extraReference?.fillId != null) {
+                                        add {
+                                            add("fill = fill${node.extraReference.fillId}")
+                                        }
+                                    } else if (node.fill != null) {
+                                        add {
+                                            add("fill = ")
+                                            add(node.fill.toCodeBlock())
+                                        }
+                                    }
+                                    if (node.extraReference?.fillAlphaId != null) {
+                                        add {
+                                            add("fillAlpha = fillAlpha${node.extraReference.fillAlphaId}")
+                                        }
+                                    } else if (node.fillAlpha != null) {
+                                        add {
+                                            add(
+                                                "fillAlpha = %Lf",
+                                                node.fillAlpha.toShortValueString()
+                                            )
+                                        }
+                                    }
+                                    if (node.extraReference?.strokeId != null) {
+                                        add {
+                                            add("stroke = stroke${node.extraReference.strokeId}")
+                                        }
+                                    } else if (node.stroke != null) {
+                                        add {
+                                            add("stroke = ")
+                                            add(node.stroke.toCodeBlock())
+                                        }
+                                    }
+                                    if (node.extraReference?.strokeAlphaId != null) {
+                                        add {
+                                            add("strokeAlpha = strokeAlpha${node.extraReference.strokeAlphaId}")
+                                        }
+                                    } else if (node.strokeAlpha != null) {
+                                        add {
+                                            add(
+                                                "strokeAlpha = %Lf",
+                                                node.strokeAlpha.toShortValueString()
+                                            )
+                                        }
+                                    }
+                                    if (node.extraReference?.strokeLineWidthId != null) {
+                                        add {
+                                            add("strokeLineWidth = strokeLineWidth${node.extraReference.strokeLineWidthId}")
+                                        }
+                                    } else if (node.strokeLineWidth != null) {
+                                        add {
+                                            add(
+                                                "strokeLineWidth = %Lf",
+                                                node.strokeLineWidth.toShortValueString()
+                                            )
+                                        }
+                                    }
+                                    if (node.extraReference?.strokeLineCapId != null) {
+                                        add {
+                                            add("strokeLineCap = strokeLineCap${node.extraReference.strokeLineCapId}")
+                                        }
+                                    } else if (node.strokeLineCap != null) {
+                                        add {
+                                            add(
+                                                "strokeLineCap = %M.%L",
+                                                MemberNames.StrokeCap,
+                                                node.strokeLineCap.name
+                                            )
+                                        }
+                                    }
+                                    if (node.extraReference?.strokeLineJoinId != null) {
+                                        add {
+                                            add("strokeLineJoin = strokeLineJoin${node.extraReference.strokeLineJoinId}")
+                                        }
+                                    } else if (node.strokeLineJoin != null) {
+                                        add {
+                                            add(
+                                                "strokeLineJoin = %M.%L",
+                                                MemberNames.StrokeJoin,
+                                                node.strokeLineJoin.name
+                                            )
+                                        }
+                                    }
+                                    if (node.extraReference?.strokeLineMiterId != null) {
+                                        add {
+                                            add("strokeLineMiter = strokeLineMiter${node.extraReference.strokeLineMiterId}")
+                                        }
+                                    } else if (node.strokeLineMiter != null) {
+                                        add {
+                                            add(
+                                                "strokeLineMiter = %Lf",
+                                                node.strokeLineMiter.toShortValueString()
+                                            )
+                                        }
+                                    }
+                                    if (node.trimPathStart != null) {
+                                        add { add("trimPathStart = %Lf", node.trimPathStart) }
+                                    }
+                                    if (node.trimPathEnd != null) {
+                                        add { add("trimPathEnd = %Lf", node.trimPathEnd) }
+                                    }
+                                    if (node.trimPathOffset != null) {
+                                        add { add("trimPathOffset = %Lf", node.trimPathOffset) }
+                                    }
+                                }.forEachIndexed { index, block ->
+                                    if (0 < index) {
+                                        add(", ")
+                                    }
+                                    block()
+                                }
+                                if (useTrim) {
+                                    addStatement(")")
+                                } else {
+                                    beginControlFlow(")")
+                                    node.pathData.forEach { pathNode ->
+                                        add(pathNode.toCodeBlock())
+                                        add("\n")
+                                    }
+                                    endControlFlow()
+                                }
+                            }
+                        )
+                        unindent()
+                        addStatement("}.build()")
+                    }
+                )
+                .addStatement("return %N!!", backingProperty)
+                .build()
+        ).build()
         builder.addProperty(property)
         builder.addProperty(backingProperty)
         val preview1FunSpec = FunSpec.builder(
@@ -271,9 +352,17 @@ class ImageVectorGenerator {
             AnnotationSpec.builder(ClassNames.Composable).build()
         ).addModifiers(
             KModifier.PRIVATE
-        ).addCode(
-            "%M(${baseClass.simpleNames.joinToString(".")}.%N, null)", MemberNames.Image, property
-        )
+        ).apply {
+            if (receiverClass != null) {
+                addCode(
+                    "%M(${receiverClass.simpleNames.joinToString(".")}.%N, null)",
+                    MemberNames.Image,
+                    property
+                )
+            } else {
+                addCode("%M(%N, null)", MemberNames.Image, property)
+            }
+        }
         builder.addFunction(preview1FunSpec.build())
         val preview2FunSpec = FunSpec.builder(
             "${imageVector.name}BackgroundPreview"
@@ -286,9 +375,17 @@ class ImageVectorGenerator {
             AnnotationSpec.builder(ClassNames.Composable).build()
         ).addModifiers(
             KModifier.PRIVATE
-        ).addCode(
-            "%M(${baseClass.simpleNames.joinToString(".")}.%N, null)", MemberNames.Image, property
-        )
+        ).apply {
+            if (receiverClass != null) {
+                addCode(
+                    "%M(${receiverClass.simpleNames.joinToString(".")}.%N, null)",
+                    MemberNames.Image,
+                    property
+                )
+            } else {
+                addCode("%M(%N, null)", MemberNames.Image, property)
+            }
+        }
         builder.addFunction(preview2FunSpec.build())
         return builder.setIndent().build().toString()
     }
@@ -326,7 +423,7 @@ class ImageVectorGenerator {
     )
 
     private fun CodeBlock.Builder.addExtraReferenceCodeBlock(
-        referencedExtra: ImageVector.VectorNode.VectorGroup.Extra
+        referencedExtra: ImageVector.VectorNode.VectorGroup.Extra,
     ) {
         if (referencedExtra.fill != null) {
             add("val fill${referencedExtra.id} = ")

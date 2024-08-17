@@ -89,13 +89,13 @@ abstract class ComposeVectorTask: DefaultTask() {
             }.forEach { change ->
                 logger.info("changed: $change")
                 val svgFile = change.file
-                val outputDirectoryRelativePath = Path.of(change.normalizedPath).parent
-                    ?: error(
-                        """
-                        invalid file location: ${change.file}
-                        SVG file should have at least one parent directory that will be enclosing receiver class.
-                    """
-                    )
+                val relativePath = Path.of(change.normalizedPath)
+                val hasReceiverClass = (relativePath.parent != null)
+                val outputDirectoryRelativePath = if (hasReceiverClass) {
+                    relativePath.parent
+                } else {
+                    Path.of(".")
+                }
                 val outputDirectory = packageDirectory.dir(outputDirectoryRelativePath.pathString)
                 val destinationPropertyName = svgFile
                     .nameWithoutExtension.let {
@@ -103,26 +103,27 @@ abstract class ComposeVectorTask: DefaultTask() {
                     }.toKotlinName().let {
                         postClassNameTransformer.orNull?.transform(Pair(svgFile, it)) ?: it
                     }
-                val destinationClassNames = (1..outputDirectoryRelativePath.nameCount).map {
-                    outputDirectoryRelativePath.subpath(0, it)
-                }.map { relativePath ->
-                    val directory = inputDir.dir(relativePath.pathString).get().asFile
-                    directory.name.toKotlinClassName(
-                        directory,
-                        preClassNameTransformer.orNull,
-                        postClassNameTransformer.orNull,
-                    )
-                }
-                val extensionPackage = listOf(
-                    packageName,
-                    *(1..outputDirectoryRelativePath.nameCount).map {
+                val receiverClasses = if (hasReceiverClass) {
+                    (1..outputDirectoryRelativePath.nameCount).map {
                         outputDirectoryRelativePath.subpath(0, it)
-                    }.map { relativePath ->
-                        val directory = inputDir.dir(relativePath.pathString).get().asFile
+                    }.map { path ->
+                        val directory = inputDir.dir(path.pathString).get().asFile
+                        directory.name.toKotlinClassName(
+                            directory,
+                            preClassNameTransformer.orNull,
+                            postClassNameTransformer.orNull,
+                        )
+                    }
+                } else emptyList()
+                val extensionPackage = (listOf(packageName) + if (hasReceiverClass) {
+                    (1..outputDirectoryRelativePath.nameCount).map {
+                        outputDirectoryRelativePath.subpath(0, it)
+                    }.map { path ->
+                        val directory = inputDir.dir(path.pathString).get().asFile
                         packageNameTransformer.orNull?.transform(Pair(directory, directory.name))
                             ?: directory.name
-                    }.toTypedArray(),
-                ).joinToString(".")
+                    }
+                } else emptyList()).joinToString(".")
                 val outputFile = outputDirectory.file("${destinationPropertyName}.kt")
                 when (change.changeType) {
                     ChangeType.ADDED,
@@ -135,13 +136,13 @@ abstract class ComposeVectorTask: DefaultTask() {
                                 parser.parse(
                                     input = stream,
                                     name = destinationPropertyName,
-                                    autoMirror = destinationClassNames.contains("AutoMirrored")
+                                    autoMirror = receiverClasses.contains("AutoMirrored")
                                 )
                             }
                             val kotlinSource = generator.generate(
                                 imageVector = imageVector,
-                                destinationClassPackage = packageName,
-                                destinationClassNames = destinationClassNames,
+                                destinationPackage = packageName,
+                                receiverClasses = receiverClasses,
                                 extensionPackage = extensionPackage,
                             )
                             outputFile.asFile.writeText(kotlinSource)
