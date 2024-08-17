@@ -9,6 +9,18 @@
         "patch"
       ],
       "enabled": false
+    },
+    {
+      "matchPackageNames": [
+        "io.github.irgaly.compose-vector:io.github.irgaly.compose-vector.gradle.plugin"
+      ],
+      "enabled": false
+    },
+    {
+      "matchPackageNames": [
+        "io.github.irgaly.compose.vector:compose-vector"
+      ],
+      "enabled": false
     }
   ]
 }
