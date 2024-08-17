@@ -44,7 +44,7 @@ signing {
 }
 
 group = "io.github.irgaly.compose.vector"
-version = libs.versions.composeVectorPlugin.get()
+version = libs.versions.composeVector.get()
 
 publishing {
     publications {

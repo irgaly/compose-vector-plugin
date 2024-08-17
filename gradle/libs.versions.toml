@@ -1,5 +1,5 @@
 [versions]
-composeVectorPlugin = "0.1.0"
+composeVector = "0.1.0"
 kotlin = "2.0.0"
 gradle-android = "8.4.2"
 kotest = "5.9.0"
@@ -20,6 +20,7 @@ kotlinpoet = { module = "com.squareup:kotlinpoet", version = "1.15.2" }
 batik = { module = "org.apache.xmlgraphics:batik-all", version = "1.17" }
 test-kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 test-kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+composeVector = { module = "io.github.irgaly.compose.vector:compose-vector", version.ref = "composeVector" }
 
 [bundles]
 compose = ["compose-activity", "compose-material3", "compose-material-icons-extended", "compose-uiTooling"]
@@ -33,4 +34,4 @@ android-library = { id = "com.android.library", version.ref = "gradle-android" }
 publish = { id = "com.gradle.plugin-publish", version = "1.2.0" }
 dokka = { id = "org.jetbrains.dokka", version = "1.9.0" }
 nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version = "2.0.0" }
-composeVector = { id = "io.github.irgaly.compose.vector", version.ref = "composeVectorPlugin" }
+composeVector = { id = "io.github.irgaly.compose-vector", version.ref = "composeVector" }

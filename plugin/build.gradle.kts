@@ -4,21 +4,20 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.publish)
     alias(libs.plugins.nexus.publish)
-    signing
 }
 
-group = "io.github.irgaly.compose.vector"
-version = libs.versions.composeVectorPlugin.get()
+group = "io.github.irgaly.compose-vector"
+version = libs.versions.composeVector.get()
 
 gradlePlugin {
     website = "https://github.com/irgaly/compose-vector-plugin"
     vcsUrl = "https://github.com/irgaly/compose-vector-plugin"
     plugins {
         create("plugin") {
-            id = "io.github.irgaly.compose.vector"
+            id = "io.github.irgaly.compose-vector"
             displayName = "Gradle Compose Vector Plugin"
             description = "Gradle Plugin for Converting SVG file to Compose ImageVector"
-            tags = listOf("compose")
+            tags = listOf("compose", "svg")
             implementationClass = "io.github.irgaly.compose.vector.plugin.ComposeVectorPlugin"
         }
     }
@@ -42,13 +41,6 @@ subprojects {
 java {
     withSourcesJar()
     withJavadocJar()
-}
-
-signing {
-    useInMemoryPgpKeys(
-        providers.gradleProperty("signingKey").orNull,
-        providers.gradleProperty("signingPassword").orNull
-    )
 }
 
 if (providers.environmentVariable("CI").isPresent) {
