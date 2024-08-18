@@ -5,7 +5,9 @@ import com.squareup.kotlinpoet.MemberName
 
 internal object PackageNames {
     val Runtime = "androidx.compose.runtime"
-    val Preview = "androidx.compose.ui.tooling.preview"
+    val AndroidPreview = "androidx.compose.ui.tooling.preview"
+    val JetbrainsPreview = "org.jetbrains.compose.ui.tooling.preview"
+    val DesktopPreview = "androidx.compose.desktop.ui.tooling.preview"
     val Foundation = "androidx.compose.foundation"
     val Graphics = "androidx.compose.ui.graphics"
     val Vector = "androidx.compose.ui.graphics.vector"
@@ -15,7 +17,9 @@ internal object PackageNames {
 
 internal object ClassNames {
     val Composable = ClassName(PackageNames.Runtime, "Composable")
-    val Preview = ClassName(PackageNames.Preview, "Preview")
+    val AndroidPreview = ClassName(PackageNames.AndroidPreview, "Preview")
+    val JetbrainsPreview = ClassName(PackageNames.JetbrainsPreview, "Preview")
+    val DesktopPreview = ClassName(PackageNames.DesktopPreview, "Preview")
     val ImageVector = ClassName(PackageNames.Vector, "ImageVector")
     val PathFillType = ClassName(PackageNames.Graphics, "PathFillType")
     val BrushCompanion = ClassName(PackageNames.Graphics, "Brush", "Companion")

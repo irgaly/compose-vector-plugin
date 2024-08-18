@@ -30,7 +30,8 @@ suspend fun main(@Suppress("UNUSED_PARAMETER") args: Array<String>) {
         imageVector = imageVector,
         destinationPackage = "io.github.irgaly.icons",
         receiverClasses = listOf("Icons", "AutoMirrored", "Filled"),
-        extensionPackage = "io.github.irgaly.icons.automirrored.filled"
+        extensionPackage = "io.github.irgaly.icons.automirrored.filled",
+        hasAndroidPreview = true,
     )
     println("--- Output.kt")
     print(codes)

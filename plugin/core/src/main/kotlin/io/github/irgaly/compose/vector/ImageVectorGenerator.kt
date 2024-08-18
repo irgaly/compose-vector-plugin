@@ -16,11 +16,19 @@ import io.github.irgaly.compose.vector.node.ImageVector
  * ImageVector to Kotlin Implementation
  */
 class ImageVectorGenerator {
+    /**
+     * @param hasAndroidPreview Add androidx.compose.ui.tooling.preview.Preview functions or not
+     * @param hasJetbrainsPreview Add org.jetbrains.compose.ui.tooling.preview.Preview functions or not
+     * @param hasDesktopPreview Add androidx.compose.desktop.ui.tooling.preview.Preview functions or not
+     */
     fun generate(
         imageVector: ImageVector,
         destinationPackage: String,
         receiverClasses: List<String>,
         extensionPackage: String,
+        hasAndroidPreview: Boolean = false,
+        hasJetbrainsPreview: Boolean = false,
+        hasDesktopPreview: Boolean = false,
     ): String {
         val receiverClass = if (receiverClasses.isNotEmpty()) {
             ClassName(destinationPackage, *receiverClasses.toTypedArray())
@@ -29,6 +37,18 @@ class ImageVectorGenerator {
             packageName = extensionPackage,
             fileName = "${imageVector.name}.kt"
         )
+        if (1 < listOf(hasAndroidPreview, hasJetbrainsPreview, hasDesktopPreview).count { it }) {
+            // Add alias import
+            if (hasAndroidPreview) {
+                builder.addAliasedImport(ClassNames.AndroidPreview, "AndroidPreview")
+            }
+            if (hasJetbrainsPreview) {
+                builder.addAliasedImport(ClassNames.JetbrainsPreview, "JetbrainsPreview")
+            }
+            if (hasDesktopPreview) {
+                builder.addAliasedImport(ClassNames.DesktopPreview, "DesktopPreview")
+            }
+        }
         val backingProperty = PropertySpec.builder(
             name = "_${imageVector.name.replaceFirstChar { it.lowercase() }}",
             type = ClassNames.ImageVector.copy(nullable = true)
@@ -344,49 +364,61 @@ class ImageVectorGenerator {
         ).build()
         builder.addProperty(property)
         builder.addProperty(backingProperty)
-        val preview1FunSpec = FunSpec.builder(
-            "${imageVector.name}Preview"
-        ).addAnnotation(
-            AnnotationSpec.builder(ClassNames.Preview).build()
-        ).addAnnotation(
-            AnnotationSpec.builder(ClassNames.Composable).build()
-        ).addModifiers(
-            KModifier.PRIVATE
-        ).apply {
-            if (receiverClass != null) {
-                addCode(
-                    "%M(${receiverClass.simpleNames.joinToString(".")}.%N, null)",
-                    MemberNames.Image,
-                    property
-                )
-            } else {
-                addCode("%M(%N, null)", MemberNames.Image, property)
+        if (listOf(hasAndroidPreview, hasJetbrainsPreview, hasDesktopPreview).any { it }) {
+            val previewFunSpec = FunSpec.builder(
+                "${imageVector.name}Preview"
+            ).apply {
+                if (hasAndroidPreview) {
+                    addAnnotation(AnnotationSpec.builder(ClassNames.AndroidPreview).build())
+                }
+                if (hasJetbrainsPreview) {
+                    addAnnotation(AnnotationSpec.builder(ClassNames.JetbrainsPreview).build())
+                }
+                if (hasDesktopPreview) {
+                    addAnnotation(AnnotationSpec.builder(ClassNames.DesktopPreview).build())
+                }
+            }.addAnnotation(
+                AnnotationSpec.builder(ClassNames.Composable).build()
+            ).addModifiers(
+                KModifier.PRIVATE
+            ).apply {
+                if (receiverClass != null) {
+                    addCode(
+                        "%M(${receiverClass.simpleNames.joinToString(".")}.%N, null)",
+                        MemberNames.Image,
+                        property
+                    )
+                } else {
+                    addCode("%M(%N, null)", MemberNames.Image, property)
+                }
             }
+            builder.addFunction(previewFunSpec.build())
         }
-        builder.addFunction(preview1FunSpec.build())
-        val preview2FunSpec = FunSpec.builder(
-            "${imageVector.name}BackgroundPreview"
-        ).addAnnotation(
-            AnnotationSpec.builder(ClassNames.Preview)
-                .addMember(
-                    "showBackground = true"
-                ).build()
-        ).addAnnotation(
-            AnnotationSpec.builder(ClassNames.Composable).build()
-        ).addModifiers(
-            KModifier.PRIVATE
-        ).apply {
-            if (receiverClass != null) {
-                addCode(
-                    "%M(${receiverClass.simpleNames.joinToString(".")}.%N, null)",
-                    MemberNames.Image,
-                    property
-                )
-            } else {
-                addCode("%M(%N, null)", MemberNames.Image, property)
+        if (hasAndroidPreview) {
+            val showBackgroundPreviewFunSpec = FunSpec.builder(
+                "${imageVector.name}BackgroundPreview"
+            ).addAnnotation(
+                AnnotationSpec.builder(ClassNames.AndroidPreview)
+                    .addMember(
+                        "showBackground = true"
+                    ).build()
+            ).addAnnotation(
+                AnnotationSpec.builder(ClassNames.Composable).build()
+            ).addModifiers(
+                KModifier.PRIVATE
+            ).apply {
+                if (receiverClass != null) {
+                    addCode(
+                        "%M(${receiverClass.simpleNames.joinToString(".")}.%N, null)",
+                        MemberNames.Image,
+                        property
+                    )
+                } else {
+                    addCode("%M(%N, null)", MemberNames.Image, property)
+                }
             }
+            builder.addFunction(showBackgroundPreviewFunSpec.build())
         }
-        builder.addFunction(preview2FunSpec.build())
         return builder.setIndent().build().toString()
     }
 
