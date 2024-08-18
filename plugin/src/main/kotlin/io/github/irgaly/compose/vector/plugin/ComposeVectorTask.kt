@@ -68,6 +68,33 @@ abstract class ComposeVectorTask: DefaultTask() {
     abstract
     val packageNameTransformer: Property<Transformer<String, Pair<File, String>>>
 
+    /**
+     * Generated ImageVector classes has androidx.compose.ui.tooling.preview.Preview functions or not
+     *
+     * Default: false
+     */
+    @get:Input
+    @get:Optional
+    abstract val hasAndroidPreview: Property<Boolean>
+
+    /**
+     * Generated ImageVector classes has org.jetbrains.compose.ui.tooling.preview.Preview functions or not
+     *
+     * Default: false
+     */
+    @get:Input
+    @get:Optional
+    abstract val hasJetbrainsPreview: Property<Boolean>
+
+    /**
+     * Generated ImageVector classes has androidx.compose.desktop.ui.tooling.preview.Preview functions or not
+     *
+     * Default: false
+     */
+    @get:Input
+    @get:Optional
+    abstract val hasDesktopPreview: Property<Boolean>
+
     @TaskAction
     fun execute(inputChanges: InputChanges) {
         val outputBaseDirectory = outputDir.get()
@@ -144,6 +171,9 @@ abstract class ComposeVectorTask: DefaultTask() {
                                 destinationPackage = packageName,
                                 receiverClasses = receiverClasses,
                                 extensionPackage = extensionPackage,
+                                hasAndroidPreview = hasAndroidPreview.getOrElse(false),
+                                hasJetbrainsPreview = hasJetbrainsPreview.getOrElse(false),
+                                hasDesktopPreview = hasDesktopPreview.getOrElse(false),
                             )
                             outputFile.asFile.writeText(kotlinSource)
                         } catch (error: Exception) {
