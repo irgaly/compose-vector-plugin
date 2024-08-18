@@ -17,5 +17,6 @@ plugins {
 }
 rootProject.name = "compose-vector-plugin"
 include(":sample:android")
+include(":sample:multiplatform")
 //include(":sample:jvm-library")
 includeBuild("plugin")
