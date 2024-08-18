@@ -4,6 +4,7 @@ import org.gradle.api.Transformer
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import java.io.File
 
 abstract class ComposeVectorExtension(
@@ -26,7 +27,8 @@ abstract class ComposeVectorExtension(
     abstract val inputDir: DirectoryProperty
 
     /**
-     * Generated Kotlin Sources directory
+     * Generated Kotlin Sources directory.
+     * outputDir is registered to SourceSet when outputDir is inside of project's buildDirectory.
      *
      * Optional
      *
@@ -93,6 +95,37 @@ abstract class ComposeVectorExtension(
      */
     abstract val packageNameTransformer: Property<Transformer<String, Pair<File, String>>>
 
+    /**
+     * Target SourceSets that generated images belongs to for KMP project.
+     * This option is not affect to only KMP Project, not to Android only Project.
+     */
+    @get:Input
+    abstract val multiplatformGenerationTarget: Property<GenerationTarget>
+
+    /**
+     * Generate androidx.compose.ui.tooling.preview.Preview functions for Android target or not
+     *
+     * Default: true
+     */
+    @get:Input
+    abstract val generateAndroidPreview: Property<Boolean>
+
+    /**
+     * Generate org.jetbrains.compose.ui.tooling.preview.Preview functions for KMP common target or not
+     *
+     * Default: false
+     */
+    @get:Input
+    abstract val generateJetbrainsPreview: Property<Boolean>
+
+    /**
+     * Generate androidx.compose.desktop.ui.tooling.preview.Preview functions for KMP common target or not
+     *
+     * Default: true
+     */
+    @get:Input
+    abstract val generateDesktopPreview: Property<Boolean>
+
     init {
         inputDir.convention(
             projectLayout.projectDirectory.dir("images")
@@ -100,5 +133,24 @@ abstract class ComposeVectorExtension(
         outputDir.convention(
             projectLayout.buildDirectory.dir("compose-vector/src/main/kotlin")
         )
+        multiplatformGenerationTarget.convention(GenerationTarget.Common)
+        generateAndroidPreview.convention(true)
+        generateJetbrainsPreview.convention(false)
+        generateDesktopPreview.convention(true)
+    }
+
+    /**
+     * Target SourceSets that generated images belongs to.
+     */
+    enum class GenerationTarget {
+        /**
+         * commonMain target
+         */
+        Common,
+
+        /**
+         * androidMain target
+         */
+        Android
     }
 }
