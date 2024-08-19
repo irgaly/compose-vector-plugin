@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.publish)
+    alias(libs.plugins.plugin.publish)
     alias(libs.plugins.nexus.publish)
 }
 

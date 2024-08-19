@@ -23,4 +23,4 @@ jobs:
           SIGNING_PGP_KEY: ${{ secrets.SIGNING_PGP_KEY }}
           SIGNING_PGP_PASSWORD: ${{ secrets.SIGNING_PGP_PASSWORD }}
         run: |
-          ./gradlew publishToSonatype closeSonatypeStagingRepository
+          ./gradlew :plugin:core:publishToSonatype :plugin:closeSonatypeStagingRepository
