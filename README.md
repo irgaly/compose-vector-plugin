@@ -91,7 +91,7 @@ import io.github.irgaly.compose.vector.sample.image.icons.filled.Undo
     }
 ```
 
-The generated ImageVector property will something like this:
+The generated ImageVector property will be something like this:
 
 ```kotlin
 ...
