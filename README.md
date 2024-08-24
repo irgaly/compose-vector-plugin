@@ -91,6 +91,70 @@ import io.github.irgaly.compose.vector.sample.image.icons.filled.Undo
     }
 ```
 
+The generated ImageVector property will something like this:
+
+```kotlin
+...
+@Suppress("RedundantVisibilityModifier")
+public val Icons.Filled.Undo: ImageVector
+    get() {
+        if (_undo != null) {
+            return _undo!!
+        }
+        _undo = Builder("Undo", 24.dp, 24.dp, 960f, 960f).apply {
+            group(translationY = 960f) {
+                val fill0 = SolidColor(Color(0xFFE8EAED))
+                val fillAlpha0 = 1f
+                val strokeAlpha0 = 1f
+                val strokeLineWidth0 = 1f
+                val strokeLineCap0 = StrokeCap.Butt
+                val strokeLineJoin0 = StrokeJoin.Miter
+                val strokeLineMiter0 = 4f
+                path(fill = fill0, fillAlpha = fillAlpha0, strokeAlpha = strokeAlpha0,
+                        strokeLineWidth = strokeLineWidth0, strokeLineCap = strokeLineCap0,
+                        strokeLineJoin = strokeLineJoin0, strokeLineMiter = strokeLineMiter0) {
+                    moveTo(280f, -200f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(284f)
+                    quadToRelative(63f, 0f, 109.5f, -40f)
+                    reflectiveQuadTo(720f, -420f)
+                    quadToRelative(0f, -60f, -46.5f, -100f)
+                    reflectiveQuadTo(564f, -560f)
+                    horizontalLineTo(312f)
+                    lineToRelative(104f, 104f)
+                    lineToRelative(-56f, 56f)
+                    lineToRelative(-200f, -200f)
+                    lineToRelative(200f, -200f)
+                    lineToRelative(56f, 56f)
+                    lineToRelative(-104f, 104f)
+                    horizontalLineToRelative(252f)
+                    quadToRelative(97f, 0f, 166.5f, 63f)
+                    reflectiveQuadTo(800f, -420f)
+                    quadToRelative(0f, 94f, -69.5f, 157f)
+                    reflectiveQuadTo(564f, -200f)
+                    horizontalLineTo(280f)
+                    close()
+                }
+            }
+        }.build()
+        return _undo!!
+    }
+
+private var _undo: ImageVector? = null
+
+@Preview
+@Composable
+private fun UndoPreview() {
+    Image(Icons.Filled.Undo, null)
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UndoBackgroundPreview() {
+    Image(Icons.Filled.Undo, null)
+}
+```
+
 ## ImageVector properties structure
 
 The input directories structure will be mapped to ImageVector properties structure.
