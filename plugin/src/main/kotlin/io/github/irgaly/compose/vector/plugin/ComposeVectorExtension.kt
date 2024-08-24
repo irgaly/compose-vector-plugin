@@ -97,7 +97,7 @@ abstract class ComposeVectorExtension(
 
     /**
      * Target SourceSets that generated images belongs to for KMP project.
-     * This option is not affect to only KMP Project, not to Android only Project.
+     * This option is affect to KMP Project, not to Android only Project.
      */
     @get:Input
     abstract val multiplatformGenerationTarget: Property<GenerationTarget>
