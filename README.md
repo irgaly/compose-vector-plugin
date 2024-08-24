@@ -297,22 +297,20 @@ composeVector {
 
     // Generate androidx.compose.ui.tooling.preview.Preview functions for Android target or not
     //
-    // 
+    // Optional
     // Default: true
     generateAndroidPreview = true
 
-    /**
-     * Generate org.jetbrains.compose.ui.tooling.preview.Preview functions for KMP common target or not
-     *
-     * Default: false
-     */
+    // Generate org.jetbrains.compose.ui.tooling.preview.Preview functions for KMP common target or not
+    //
+    // Optional
+    // Default: false
     generateJetbrainsPreview = false
 
-    /**
-     * Generate androidx.compose.desktop.ui.tooling.preview.Preview functions for KMP common target or not
-     *
-     * Default: true
-     */
+    // Generate androidx.compose.desktop.ui.tooling.preview.Preview functions for KMP common target or not
+    //
+    // Optional
+    // Default: true
     generateDesktopPreview = true
 }
 ```
