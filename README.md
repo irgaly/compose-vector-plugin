@@ -64,9 +64,9 @@ Or `KotlinCompile Task` will trigger generateImageVector task by tasks dependenc
 # or compile task
 % ./gradlew :app:compileDebugKotlin
 ...
-> Task :sample:android:generateImageVector UP-TO-DATE
+> Task :app:generateImageVector UP-TO-DATE
 ...
-> Task :sample:android:compileDebugKotlin
+> Task :app:compileDebugKotlin
 ...
 ```
 
