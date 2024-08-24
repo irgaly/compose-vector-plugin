@@ -323,7 +323,7 @@ This plugin will be logging with `--info` gradle option.
 % ./gradlew :app:generateImageVector --info
 ...
 > Task :app:generateImageVector
-Build cache key for task ':app:sample:generateImageVector' is dc07551486b4a33c25fa9d1ef7b64905
+Build cache key for task ':app:generateImageVector' is dc07551486b4a33c25fa9d1ef7b64905
 Task ':app:generateImageVector' is not up-to-date because:
   Task.upToDateWhen is false.
 The input changes require a full rebuild for incremental task ':app:generateImageVector'.
