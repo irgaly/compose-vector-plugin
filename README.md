@@ -390,13 +390,64 @@ println(kotlinSource)
 ## Supported SVG specifications
 
 This plugin's converter is using [Apache Batik](https://xmlgraphics.apache.org/batik/) SVG parser,
-and supports basics specifications of SVG 1.1 + CSS style tag.
+and supports basics specifications of SVG 1.2 + CSS style tag.
 
 Here is a supporting table.
 
-| SVG tag | SVG attribute | Supporting Status |
-|---------| --- | --- |
-| ...TBA  | | |
+| SVG tag        | SVG attribute                                                                            | Supporting Status                                                 |
+|----------------|------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| (any)          | id                                                                                       | :white_check_mark:                                                |
+| (any)          | style                                                                                    | :white_check_mark:                                                |
+| (any)          | transform                                                                                | :white_check_mark:                                                |
+| (any)          | display                                                                                  | :white_check_mark:                                                |
+| (any)          | visibility                                                                               | :white_check_mark:                                                |
+| (any)          | color                                                                                    | :white_check_mark:                                                |
+| (any)          | fill, fill-opacity, fill-rule                                                            | :white_check_mark:                                                |
+| (any)          | stroke, stroke-opacity, stroke-width, stroke-linecap, stroke-linejoin, stroke-miterlimit | :white_check_mark:                                                |
+| (any)          | clip-path, clip-rule, clipPathUnits                                                      | :white_check_mark:                                                |
+| svg            | viewBox, width, height                                                                   | :white_check_mark:<br/>Nested SVG tag is supported.               |
+| symbol         | viewBox, x, y, width, height                                                             | :white_check_mark:                                                |
+| g              |                                                                                          | :white_check_mark:                                                |
+| path           | d                                                                                        | :white_check_mark:                                                |
+| rect           | x, y, width, height, rx, ry                                                              | :white_check_mark:                                                |
+| circle         | cx, cy, r                                                                                | :white_check_mark:                                                |
+| ellipse        | cx, cy, rx, ry                                                                           | :white_check_mark:                                                |
+| line           | x1, x2, y1, y2                                                                           | :white_check_mark:                                                |
+| polyline       | points                                                                                   | :white_check_mark:                                                |
+| polygon        | points                                                                                   | :white_check_mark:                                                |
+| clipPath       |                                                                                          | :white_check_mark:                                                |
+| defs           |                                                                                          | :white_check_mark:                                                |
+| linearGradient | gradientUnits, spreadMethod, x1, x2, y1, y2                                              | :white_check_mark:                                                |
+| radialGradient | gradientUnits, cx, cy, fr                                                                | :white_check_mark:                                                |
+| stop           | offset, stop-color                                                                       | :white_check_mark:                                                |
+| use            | href, xlink:href                                                                         | :white_check_mark:                                                |
+| a              |                                                                                          | a tag is treated as same as g tag. No clickable feature.          |
+| title          |                                                                                          | This tag is just ignored                                          |
+| desc           |                                                                                          | This tag is just ignored                                          |
+| metadata       |                                                                                          | This tag is just ignored                                          |
+| view           |                                                                                          | This tag is just ignored                                          |
+| script         |                                                                                          | This tag is just ignored                                          |
+| cursor         |                                                                                          | This tag is just ignored                                          |
+| animate        |                                                                                          | Not supported because ImageVector doesn't have animation feature. |
+| text           |                                                                                          | Not supported because ImageVector can't draw texts.               |
+| image          |                                                                                          | Not supported because ImageVector can't draw images.              |
+| filter         |                                                                                          | Not supported.                                                    |
+| mask           |                                                                                          | Not supported.                                                    |
+| switch         |                                                                                          | Not supported.                                                    |
+| foreignObject  |                                                                                          | Not supported.                                                    |
+
+### Color style
+
+CSS4 Named Colors and sRGB colors are supported for color format.
+
+| Color Style                                                          | Supporting Status  |
+|----------------------------------------------------------------------|--------------------|
+| [CSS4 Named Colors](https://www.w3.org/TR/css-color-4/#named-colors) | :white_check_mark: |
+| rgb(0 0 0), rgb(0% 0% 0%), rgb(0, 0, 0)                              | :white_check_mark: |
+| rgb(0 0 0 0), rgb(0 0 0 / 0), rgb(0% 0% 0% 0%), rgb(0, 0, 0, 0)      | :white_check_mark: |
+| rgba(0 0 0 0), rgba(0 0 0 / 0), rgba(0%, 0%, 0%)                     | :white_check_mark: |
+| #RRGGBB, #RGB                                                        | :white_check_mark: |
+| #RRGGBBAA, #RGBA                                                     | :white_check_mark: |
 
 
 
