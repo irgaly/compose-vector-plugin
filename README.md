@@ -436,18 +436,18 @@ Here is a supporting table.
 | switch         |                                                                                          | Not supported.                                                    |
 | foreignObject  |                                                                                          | Not supported.                                                    |
 
-### Color style
+### Color format style
 
 CSS4 Named Colors and sRGB colors are supported for color format.
 
-| Color Style                                                          | Supporting Status  |
-|----------------------------------------------------------------------|--------------------|
-| [CSS4 Named Colors](https://www.w3.org/TR/css-color-4/#named-colors) | :white_check_mark: |
-| rgb(0 0 0), rgb(0% 0% 0%), rgb(0, 0, 0)                              | :white_check_mark: |
-| rgb(0 0 0 0), rgb(0 0 0 / 0), rgb(0% 0% 0% 0%), rgb(0, 0, 0, 0)      | :white_check_mark: |
-| rgba(0 0 0 0), rgba(0 0 0 / 0), rgba(0%, 0%, 0%)                     | :white_check_mark: |
-| #RRGGBB, #RGB                                                        | :white_check_mark: |
-| #RRGGBBAA, #RGBA                                                     | :white_check_mark: |
+| Color Format Style                                                          | Supporting Status  |
+|-----------------------------------------------------------------------------|--------------------|
+| [CSS4 Named Colors](https://www.w3.org/TR/css-color-4/#named-colors)        | :white_check_mark: |
+| rgb(0 0 0), rgb(0% 0% 0%), rgb(0, 0, 0)                                     | :white_check_mark: |
+| rgb(0 0 0 0), rgb(0 0 0 / 0), rgb(0% 0% 0% 0%), rgb(0, 0, 0, 0)             | :white_check_mark: |
+| rgba(0 0 0 0), rgba(0 0 0 / 0), rgba(0%, 0%, 0%, 0%)                        | :white_check_mark: |
+| #RRGGBB, #RGB                                                               | :white_check_mark: |
+| #RRGGBBAA, #RGBA                                                            | :white_check_mark: |
 
 
 
