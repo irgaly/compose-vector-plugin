@@ -126,20 +126,36 @@ class SvgParser(
         val bridgeContext = document.initializeSvgCssEngine()
         val svg = (document.rootElement as SVGOMSVGElement)
         val viewBox = (svg.viewBox as SVGOMAnimatedRect)
-        var viewBoxWidth = if (viewBox.isSpecified) svg.viewBox.baseVal.width else null
-        var viewBoxHeight = if (viewBox.isSpecified) svg.viewBox.baseVal.height else null
-        val width = if ((svg.width as SVGOMAnimatedLength).isSpecified) {
-            svg.width.baseVal.valueInSpecifiedUnits
-        } else viewBoxWidth ?: error("no width at svg tag")
-        val height = if ((svg.height as SVGOMAnimatedLength).isSpecified) {
-            svg.height.baseVal.valueInSpecifiedUnits
-        } else viewBoxHeight ?: error("no height at svg tag")
-        if (viewBoxWidth == null) {
-            viewBoxWidth = width
+        val svgWidth = (svg.width as SVGOMAnimatedLength)
+        val svgHeight = (svg.height as SVGOMAnimatedLength)
+        val viewBoxWidth = if (viewBox.isSpecified) {
+            svg.viewBox.baseVal.width
+        } else {
+            if (svgWidth.isSpecified) {
+                svgWidth.baseVal.valueInSpecifiedUnits
+            } else {
+                // default width value
+                // https://svgwg.org/specs/integration/#svg-css-sizing
+                300f
+            }
         }
-        if (viewBoxHeight == null) {
-            viewBoxHeight = height
+        val viewBoxHeight = if (viewBox.isSpecified) {
+            svg.viewBox.baseVal.height
+        } else {
+            if (svgHeight.isSpecified) {
+                svgHeight.baseVal.valueInSpecifiedUnits
+            } else {
+                // default height value
+                // https://svgwg.org/specs/integration/#svg-css-sizing
+                150f
+            }
         }
+        val width = if (svgWidth.isSpecified) {
+            svgWidth.baseVal.valueInSpecifiedUnits
+        } else viewBoxWidth
+        val height = if (svgHeight.isSpecified) {
+            svgHeight.baseVal.valueInSpecifiedUnits
+        } else viewBoxHeight
         logger.debug("viewBox width = $viewBoxWidth, height = $viewBoxHeight")
         logger.debug("width = $width, height = $height")
         val groups = mutableListOf(
