@@ -578,13 +578,38 @@ private fun SVGStylableElement.getStyleExtra(
     val pathFillType =
         styles.getLocalValue(SVGCSSEngine.FILL_RULE_INDEX)?.stringValue?.toPathFillType()
     val fill = styles.getLocalValue(SVGCSSEngine.FILL_INDEX)?.toColor()?.toBrush()
-    val fillAlpha = styles.getLocalValue(SVGCSSEngine.FILL_OPACITY_INDEX)?.toOpacity()
+    val fillAlpha = styles.getLocalValue(SVGCSSEngine.FILL_OPACITY_INDEX)?.toOpacity()?.let {
+        if (it == 1f) {
+            // 1f is Default value
+            null
+        } else it
+    }
     val stroke = styles.getLocalValue(SVGCSSEngine.STROKE_INDEX)?.toColor()?.toBrush()
-    val strokeAlpha = styles.getLocalValue(SVGCSSEngine.STROKE_OPACITY_INDEX)?.toOpacity()
+    val strokeAlpha = styles.getLocalValue(SVGCSSEngine.STROKE_OPACITY_INDEX)?.toOpacity()?.let {
+        if (it == 1f) {
+            // 1f is Default value
+            null
+        } else it
+    }
     val strokeLineWidth = styles.getLocalValue(SVGCSSEngine.STROKE_WIDTH_INDEX)?.floatValue
-    val strokeLineCap = styles.getLocalValue(SVGCSSEngine.STROKE_LINECAP_INDEX)?.stringValue?.toStrokeCap()
-    val strokeLineJoin = styles.getLocalValue(SVGCSSEngine.STROKE_LINEJOIN_INDEX)?.stringValue?.toStrokeJoin()
-    val strokeLineMiter = styles.getLocalValue(SVGCSSEngine.STROKE_MITERLIMIT_INDEX)?.toMiterLimit()
+    val strokeLineCap = styles.getLocalValue(SVGCSSEngine.STROKE_LINECAP_INDEX)?.stringValue?.toStrokeCap()?.let {
+        if (it == ImageVector.StrokeCap.Butt) {
+            // Butt is Default value
+            null
+        } else it
+    }
+    val strokeLineJoin = styles.getLocalValue(SVGCSSEngine.STROKE_LINEJOIN_INDEX)?.stringValue?.toStrokeJoin()?.let {
+        if (it == ImageVector.StrokeJoin.Miter) {
+            // Miter is Default value
+            null
+        } else it
+    }
+    val strokeLineMiter = styles.getLocalValue(SVGCSSEngine.STROKE_MITERLIMIT_INDEX)?.toMiterLimit()?.let {
+        if (it == 4f) {
+            // 4f is Default value
+            null
+        } else it
+    }
     if (
         (pathFillType != null) ||
         (fill != null) ||
