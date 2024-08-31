@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldBe
 import java.io.File
 
 class ConverterSpec: DescribeSpec({
+    val isCi = (System.getenv("CI") != null)
     val parser = SvgParser(object : Logger {
         override fun debug(message: String) {
             println("debug: $message")
@@ -43,17 +44,19 @@ class ConverterSpec: DescribeSpec({
                     hasAndroidPreview = true
                 )
                 val resultFile = resources.resolve("${svgFile.nameWithoutExtension}.kt")
-                if (!resultFile.exists()) {
-                    // First time, create new result file
-                    resultFile.writeText(actualCodes)
-                }
-                val previewDirectory = File("../../sample/android/build/test")
-                if (!previewDirectory.exists()) {
-                    previewDirectory.mkdirs()
-                }
-                val previewFile = previewDirectory.resolve("${svgFile.nameWithoutExtension}.kt")
-                if (!previewFile.exists() || (previewFile.readText() != actualCodes)) {
-                    previewFile.writeText(actualCodes)
+                if (!isCi) {
+                    if (!resultFile.exists()) {
+                        // First time, create new result file
+                        resultFile.writeText(actualCodes)
+                    }
+                    val previewDirectory = File("../../sample/android/build/test")
+                    if (!previewDirectory.exists()) {
+                        previewDirectory.mkdirs()
+                    }
+                    val previewFile = previewDirectory.resolve("${svgFile.nameWithoutExtension}.kt")
+                    if (!previewFile.exists() || (previewFile.readText() != actualCodes)) {
+                        previewFile.writeText(actualCodes)
+                    }
                 }
                 val expectCodes = resultFile.readText()
                 actualCodes shouldBe expectCodes
