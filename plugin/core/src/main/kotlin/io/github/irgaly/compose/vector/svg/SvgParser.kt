@@ -91,9 +91,11 @@ import org.w3c.dom.svg.SVGMatrix
 import org.w3c.dom.svg.SVGPathSegList
 import org.w3c.dom.svg.SVGRadialGradientElement
 import java.awt.Color
+import java.awt.Dimension
 import java.awt.Paint
 import java.awt.Shape
 import java.awt.geom.AffineTransform
+import java.awt.geom.Dimension2D
 import java.awt.geom.Point2D
 import java.io.IOException
 import java.io.InputStream
@@ -123,25 +125,44 @@ class SvgParser(
             logger.error("open XML document error", error)
             throw error
         }
-        val bridgeContext = document.initializeSvgCssEngine()
         val svg = (document.rootElement as SVGOMSVGElement)
         val viewBox = (svg.viewBox as SVGOMAnimatedRect)
-        var viewBoxWidth = if (viewBox.isSpecified) svg.viewBox.baseVal.width else null
-        var viewBoxHeight = if (viewBox.isSpecified) svg.viewBox.baseVal.height else null
-        val width = if ((svg.width as SVGOMAnimatedLength).isSpecified) {
-            svg.width.baseVal.valueInSpecifiedUnits
-        } else viewBoxWidth ?: error("no width at svg tag")
-        val height = if ((svg.height as SVGOMAnimatedLength).isSpecified) {
-            svg.height.baseVal.valueInSpecifiedUnits
-        } else viewBoxHeight ?: error("no height at svg tag")
-        if (viewBoxWidth == null) {
-            viewBoxWidth = width
+        val svgWidth = (svg.width as SVGOMAnimatedLength)
+        val svgHeight = (svg.height as SVGOMAnimatedLength)
+        val viewBoxWidth = if (viewBox.isSpecified) {
+            svg.viewBox.baseVal.width
+        } else {
+            if (svgWidth.isSpecified) {
+                svgWidth.baseVal.valueInSpecifiedUnits
+            } else {
+                // default width value
+                // https://svgwg.org/specs/integration/#svg-css-sizing
+                300f
+            }
         }
-        if (viewBoxHeight == null) {
-            viewBoxHeight = height
+        val viewBoxHeight = if (viewBox.isSpecified) {
+            svg.viewBox.baseVal.height
+        } else {
+            if (svgHeight.isSpecified) {
+                svgHeight.baseVal.valueInSpecifiedUnits
+            } else {
+                // default height value
+                // https://svgwg.org/specs/integration/#svg-css-sizing
+                150f
+            }
         }
+        val width = if (svgWidth.isSpecified) {
+            svgWidth.baseVal.valueInSpecifiedUnits
+        } else viewBoxWidth
+        val height = if (svgHeight.isSpecified) {
+            svgHeight.baseVal.valueInSpecifiedUnits
+        } else viewBoxHeight
         logger.debug("viewBox width = $viewBoxWidth, height = $viewBoxHeight")
         logger.debug("width = $width, height = $height")
+        val bridgeContext = document.initializeSvgCssEngine(
+            viewPortWidth = width.toInt(),
+            viewPortHeight = height.toInt(),
+        )
         val groups = mutableListOf(
             // root group
             GroupInfo(svg, ImageVector.VectorNode.VectorGroup(emptyList()))
@@ -512,10 +533,17 @@ class SvgParser(
  * * see https://stackoverflow.com/a/46845740/13403244
  * * see https://github.com/afester/CodeSamples/blob/b3ddb0efdd03713b0adf2d8488fc088dabfeea49/Java/JavaFXSample/src/com/example/svg/SVGDocumentLoader.java#L144
  */
-private fun SVGOMDocument.initializeSvgCssEngine(): BridgeContext {
+private fun SVGOMDocument.initializeSvgCssEngine(
+    viewPortWidth: Int,
+    viewPortHeight: Int
+): BridgeContext {
     val userAgent = object: UserAgentAdapter() {
         override fun displayMessage(message: String) {
             println(message)
+        }
+
+        override fun getViewportSize(): Dimension2D {
+            return Dimension(viewPortWidth, viewPortHeight)
         }
     }
     val bridgeContext = object: SVG12BridgeContext(
@@ -578,13 +606,38 @@ private fun SVGStylableElement.getStyleExtra(
     val pathFillType =
         styles.getLocalValue(SVGCSSEngine.FILL_RULE_INDEX)?.stringValue?.toPathFillType()
     val fill = styles.getLocalValue(SVGCSSEngine.FILL_INDEX)?.toColor()?.toBrush()
-    val fillAlpha = styles.getLocalValue(SVGCSSEngine.FILL_OPACITY_INDEX)?.toOpacity()
+    val fillAlpha = styles.getLocalValue(SVGCSSEngine.FILL_OPACITY_INDEX)?.toOpacity()?.let {
+        if (it == 1f) {
+            // 1f is Default value
+            null
+        } else it
+    }
     val stroke = styles.getLocalValue(SVGCSSEngine.STROKE_INDEX)?.toColor()?.toBrush()
-    val strokeAlpha = styles.getLocalValue(SVGCSSEngine.STROKE_OPACITY_INDEX)?.toOpacity()
+    val strokeAlpha = styles.getLocalValue(SVGCSSEngine.STROKE_OPACITY_INDEX)?.toOpacity()?.let {
+        if (it == 1f) {
+            // 1f is Default value
+            null
+        } else it
+    }
     val strokeLineWidth = styles.getLocalValue(SVGCSSEngine.STROKE_WIDTH_INDEX)?.floatValue
-    val strokeLineCap = styles.getLocalValue(SVGCSSEngine.STROKE_LINECAP_INDEX)?.stringValue?.toStrokeCap()
-    val strokeLineJoin = styles.getLocalValue(SVGCSSEngine.STROKE_LINEJOIN_INDEX)?.stringValue?.toStrokeJoin()
-    val strokeLineMiter = styles.getLocalValue(SVGCSSEngine.STROKE_MITERLIMIT_INDEX)?.toMiterLimit()
+    val strokeLineCap = styles.getLocalValue(SVGCSSEngine.STROKE_LINECAP_INDEX)?.stringValue?.toStrokeCap()?.let {
+        if (it == ImageVector.StrokeCap.Butt) {
+            // Butt is Default value
+            null
+        } else it
+    }
+    val strokeLineJoin = styles.getLocalValue(SVGCSSEngine.STROKE_LINEJOIN_INDEX)?.stringValue?.toStrokeJoin()?.let {
+        if (it == ImageVector.StrokeJoin.Miter) {
+            // Miter is Default value
+            null
+        } else it
+    }
+    val strokeLineMiter = styles.getLocalValue(SVGCSSEngine.STROKE_MITERLIMIT_INDEX)?.toMiterLimit()?.let {
+        if (it == 4f) {
+            // 4f is Default value
+            null
+        } else it
+    }
     if (
         (pathFillType != null) ||
         (fill != null) ||
