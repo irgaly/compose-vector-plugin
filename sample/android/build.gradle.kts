@@ -18,6 +18,9 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets.findByName(SourceSet.MAIN_SOURCE_SET_NAME)?.kotlin?.srcDir(
+        layout.buildDirectory.dir("test")
+    )
 }
 
 kotlin {
