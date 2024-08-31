@@ -91,9 +91,11 @@ import org.w3c.dom.svg.SVGMatrix
 import org.w3c.dom.svg.SVGPathSegList
 import org.w3c.dom.svg.SVGRadialGradientElement
 import java.awt.Color
+import java.awt.Dimension
 import java.awt.Paint
 import java.awt.Shape
 import java.awt.geom.AffineTransform
+import java.awt.geom.Dimension2D
 import java.awt.geom.Point2D
 import java.io.IOException
 import java.io.InputStream
@@ -123,7 +125,6 @@ class SvgParser(
             logger.error("open XML document error", error)
             throw error
         }
-        val bridgeContext = document.initializeSvgCssEngine()
         val svg = (document.rootElement as SVGOMSVGElement)
         val viewBox = (svg.viewBox as SVGOMAnimatedRect)
         val svgWidth = (svg.width as SVGOMAnimatedLength)
@@ -158,6 +159,10 @@ class SvgParser(
         } else viewBoxHeight
         logger.debug("viewBox width = $viewBoxWidth, height = $viewBoxHeight")
         logger.debug("width = $width, height = $height")
+        val bridgeContext = document.initializeSvgCssEngine(
+            viewPortWidth = width.toInt(),
+            viewPortHeight = height.toInt(),
+        )
         val groups = mutableListOf(
             // root group
             GroupInfo(svg, ImageVector.VectorNode.VectorGroup(emptyList()))
@@ -528,10 +533,17 @@ class SvgParser(
  * * see https://stackoverflow.com/a/46845740/13403244
  * * see https://github.com/afester/CodeSamples/blob/b3ddb0efdd03713b0adf2d8488fc088dabfeea49/Java/JavaFXSample/src/com/example/svg/SVGDocumentLoader.java#L144
  */
-private fun SVGOMDocument.initializeSvgCssEngine(): BridgeContext {
+private fun SVGOMDocument.initializeSvgCssEngine(
+    viewPortWidth: Int,
+    viewPortHeight: Int
+): BridgeContext {
     val userAgent = object: UserAgentAdapter() {
         override fun displayMessage(message: String) {
             println(message)
+        }
+
+        override fun getViewportSize(): Dimension2D {
+            return Dimension(viewPortWidth, viewPortHeight)
         }
     }
     val bridgeContext = object: SVG12BridgeContext(
