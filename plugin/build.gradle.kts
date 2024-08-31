@@ -28,6 +28,11 @@ dependencies {
     implementation(libs.kotlin.gradle)
     implementation(libs.android.gradle)
     implementation(projects.core)
+    testImplementation(libs.test.kotest.runner)
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 subprojects {
