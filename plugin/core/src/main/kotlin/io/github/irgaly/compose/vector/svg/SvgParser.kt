@@ -78,7 +78,9 @@ import org.apache.batik.parser.PathHandler
 import org.apache.batik.parser.PathParser
 import org.apache.batik.svggen.SVGGeneratorContext
 import org.apache.batik.svggen.SVGPath
+import org.apache.batik.util.ParsedURL
 import org.apache.batik.util.XMLResourceDescriptor
+import org.w3c.css.sac.InputSource
 import org.w3c.css.sac.LexicalUnit
 import org.w3c.dom.DOMImplementation
 import org.w3c.dom.Document
@@ -535,7 +537,7 @@ class SvgParser(
  */
 private fun SVGOMDocument.initializeSvgCssEngine(
     viewPortWidth: Int,
-    viewPortHeight: Int
+    viewPortHeight: Int,
 ): BridgeContext {
     val userAgent = object: UserAgentAdapter() {
         override fun displayMessage(message: String) {
@@ -996,6 +998,13 @@ private class SVG120DOMImplementationCSS3ColorFix : SVG12DOMImplementation() {
         sms: Array<out ShorthandManager>,
     ): CSSEngine {
         return super.createCSSEngine(doc, ctx, ep, vms, sms).apply {
+            val url = SVG12DOMImplementation::class.java.getResource("resources/UserAgentStyleSheet.css")
+            if (url != null) {
+                val purl = ParsedURL(url)
+                setUserAgentStyleSheet(
+                    parseStyleSheet(InputSource(purl.toString()), purl, "all")
+                )
+            }
             val managers = this.valueManagers
             managers.indices.forEach { index ->
                 val manager = managers[index]
