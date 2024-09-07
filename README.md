@@ -396,7 +396,7 @@ Here is a supporting table.
 
 | SVG tag        | SVG attribute                                                                            | Supporting Status                                                 |
 |----------------|------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
-| (any)          | id                                                                                       | :white_check_mark:                                                |
+| (any)          | id, class                                                                                | :white_check_mark:                                                |
 | (any)          | style                                                                                    | :white_check_mark:                                                |
 | (any)          | transform                                                                                | :white_check_mark:                                                |
 | (any)          | display                                                                                  | :white_check_mark:                                                |
