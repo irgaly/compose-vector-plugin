@@ -1,27 +1,22 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.composeVector)
 }
 
 android {
-    namespace = "io.github.irgaly.compose.vector.sample"
+    namespace = "io.github.irgaly.compose.vector.sample.library"
     compileSdk = 34
     defaultConfig {
-        applicationId = "io.github.irgaly.compose.vector.sample"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
     }
     buildFeatures {
         compose = true
     }
-    // compose-vector-pluginの変換結果確認ディレクトリ
-    sourceSets.findByName(SourceSet.MAIN_SOURCE_SET_NAME)?.kotlin?.srcDir(
-        layout.buildDirectory.dir("test")
-    )
+    sourceSets.configureEach {
+        java.srcDirs("src/$name/kotlin")
+    }
 }
 
 kotlin {
@@ -29,7 +24,7 @@ kotlin {
 }
 
 composeVector {
-    packageName = "io.github.irgaly.compose.vector.sample.image"
+    packageName = "io.github.irgaly.compose.vector.sample.library.image"
 }
 
 dependencies {

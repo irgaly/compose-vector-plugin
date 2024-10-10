@@ -99,7 +99,6 @@ class ComposeVectorPlugin : Plugin<Project> {
      */
     private fun Project.executeOnFinalize(block: () -> Unit) {
         var hasAndroid = false
-
         setOf(
             "com.android.application",
             "com.android.library",
