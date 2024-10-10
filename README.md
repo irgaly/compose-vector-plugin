@@ -232,6 +232,10 @@ If the output directory is under the project's `build` directory, The output dir
 `build.gradle.kts`
 
 ```kotlin
+import io.github.irgaly.compose.vector.plugin.ComposeVectorExtension
+
+...
+
 composeVector {
     // ImageVector classes destination package name
     // 
