@@ -1,6 +1,6 @@
 package io.github.irgaly.compose.vector.plugin
 
-import com.android.build.api.variant.ApplicationAndroidComponentsExtension
+import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.gradle.BaseExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -99,11 +99,15 @@ class ComposeVectorPlugin : Plugin<Project> {
      */
     private fun Project.executeOnFinalize(block: () -> Unit) {
         var hasAndroid = false
-        listOf("com.android.application", "com.android.library").forEach { pluginId ->
+
+        setOf(
+            "com.android.application",
+            "com.android.library",
+        ).forEach { pluginId ->
             pluginManager.withPlugin(pluginId) {
                 hasAndroid = true
-                extensions.configure<ApplicationAndroidComponentsExtension> {
-                    finalizeDsl {
+                extensions.configure(type = AndroidComponentsExtension::class) { extension ->
+                    extension.finalizeDsl {
                         block()
                     }
                 }
