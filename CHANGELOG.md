@@ -1,3 +1,10 @@
+# v1.0.0 - 2024/10/11 JST
+
+#### Fix
+
+* fix: Support Android Library module
+    * Issue #17 - Fix Android library compatibility [#18](https://github.com/irgaly/compose-vector-plugin/pull/18)
+
 # v0.2.0 - 2024/09/07 JST
 
 #### Improvement
