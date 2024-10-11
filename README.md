@@ -25,7 +25,7 @@ plugins {
   //id("org.jetbrains.kotlin.multiplatform")
 
   // Apply Compose Vector Plugin
-  id("io.github.irgaly.compose-vector") version "0.2.0"
+  id("io.github.irgaly.compose-vector") version "1.0.0"
 }
 ...
 ```
@@ -232,6 +232,10 @@ If the output directory is under the project's `build` directory, The output dir
 `build.gradle.kts`
 
 ```kotlin
+import io.github.irgaly.compose.vector.plugin.ComposeVectorExtension
+
+...
+
 composeVector {
     // ImageVector classes destination package name
     // 
@@ -349,7 +353,7 @@ plugins {
 }
 ...
 dependencies {
-    implementation("io.github.irgaly.compose.vector:compose-vector:0.2.0")
+    implementation("io.github.irgaly.compose.vector:compose-vector:1.0.0")
 }
 ```
 
