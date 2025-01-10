@@ -16,16 +16,16 @@ Apply this plugin to your KMP project or Android Project.
 
 ```kotlin
 plugins {
-  // For example, Android Application Project
-  id("org.jetbrains.kotlin.android")
-  id("com.android.application")
-  // or Android Library Project
-  //id("com.android.library")
-  // or KMP Project
-  //id("org.jetbrains.kotlin.multiplatform")
+    // For example, Android Application Project
+    id("org.jetbrains.kotlin.android")
+    id("com.android.application")
+    // or Android Library Project
+    //id("com.android.library")
+    // or KMP Project
+    //id("org.jetbrains.kotlin.multiplatform")
 
-  // Apply Compose Vector Plugin
-  id("io.github.irgaly.compose-vector") version "1.0.0"
+    // Apply Compose Vector Plugin
+    id("io.github.irgaly.compose-vector") version "1.0.1"
 }
 ...
 ```
@@ -36,14 +36,14 @@ Configure plugin with `composeVector` extension.
 
 ```kotlin
 composeVector {
-  // This is a required configuration.
-  // The destination package that ImageVector Images will place to.
-  packageName = "io.github.irgaly.compose.vector.sample.image"
+    // This is a required configuration.
+    // The destination package that ImageVector Images will place to.
+    packageName = "io.github.irgaly.compose.vector.sample.image"
 
-  // This is an optional configuration.
-  // The directory that SVG files are placed.
-  // Default value is "{project directory}/images"
-  inputDir = layout.projectDirectory.dir("images")
+    // This is an optional configuration.
+    // The directory that SVG files are placed.
+    // Default value is "{project directory}/images"
+    inputDir = layout.projectDirectory.dir("images")
 }
 ```
 
@@ -353,7 +353,7 @@ plugins {
 }
 ...
 dependencies {
-    implementation("io.github.irgaly.compose.vector:compose-vector:1.0.0")
+    implementation("io.github.irgaly.compose.vector:compose-vector:1.0.1")
 }
 ```
 
