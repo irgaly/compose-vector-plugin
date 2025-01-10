@@ -4,6 +4,7 @@
 .idea/migrations.xml
 .idea/other.xml
 .idea/runConfigurations.xml
+.idea/AndroidProjectSystem.xml
 
 # Kotlin
 .kotlin
