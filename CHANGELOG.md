@@ -1,3 +1,10 @@
+# v1.0.1 - 2025/01/10 JST
+
+#### Fix
+
+* fix: incremental build: clean build directory only when full
+  build [#32](https://github.com/irgaly/compose-vector-plugin/pull/18)
+
 # v1.0.0 - 2024/10/11 JST
 
 #### Fix
