@@ -103,9 +103,9 @@ abstract class ComposeVectorTask: DefaultTask() {
         val parser = SvgParser(getParserLogger())
         val generator = ImageVectorGenerator()
         val buildDirectory = project.layout.buildDirectory.get()
-        if (outputBaseDirectory.asFile.startsWith(buildDirectory.asFile)) {
+        if (!inputChanges.isIncremental && outputBaseDirectory.asFile.startsWith(buildDirectory.asFile)) {
             // outputDir is under build directory
-            logger.info("clean $outputBaseDirectory because of initial build or full rebuild for incremental task and there in under project build directory.")
+            logger.info("clean $outputBaseDirectory because of initial build or full rebuild for incremental task and output directory is under project build directory.")
             outputBaseDirectory.asFile.deleteRecursively()
         }
         inputChanges.getFileChanges(inputDir)
