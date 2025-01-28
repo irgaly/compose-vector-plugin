@@ -1,6 +1,6 @@
 [versions]
 composeVector = "1.0.1"
-kotlin = "2.0.0"
+kotlin = "2.1.10"
 gradle-android = "8.7.0"
 kotest = "5.9.0"
 
