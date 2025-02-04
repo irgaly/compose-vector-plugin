@@ -28,8 +28,7 @@ public val transform_circle: ImageVector
                 lineTo(0f, 0f)
                 close()
             }
-            path(fill = SolidColor(Color.White), stroke = SolidColor(Color.Blue), strokeLineWidth =
-                    strokeLineWidth0) {
+            path(fill = SolidColor(Color.White), stroke = SolidColor(Color.Blue), strokeLineWidth = strokeLineWidth0) {
                 moveTo(283.91f, 100f)
                 curveTo(330.2522f, 155.2285f, 323.0484f, 200f, 267.8199f, 200f)
                 curveTo(212.5914f, 200f, 130.2522f, 155.2285f, 83.91f, 100f)

@@ -20,8 +20,7 @@ public val svg_no_viewbox: ImageVector
         _svg_no_viewbox = Builder("svg_no_viewbox", 500.dp, 500.dp, 500f, 500f).apply {
             val fill0 = SolidColor(Color(0xFF000000))
             val strokeLineWidth0 = 1f
-            path(fill = fill0, stroke = SolidColor(Color.Blue), strokeLineWidth =
-                    strokeLineWidth0) {
+            path(fill = fill0, stroke = SolidColor(Color.Blue), strokeLineWidth = strokeLineWidth0) {
                 moveTo(200f, 100f)
                 curveTo(200f, 155.2285f, 155.2285f, 200f, 100f, 200f)
                 curveTo(44.7715f, 200f, 0f, 155.2285f, 0f, 100f)
