@@ -102,6 +102,7 @@ class ComposeVectorPlugin : Plugin<Project> {
         setOf(
             "com.android.application",
             "com.android.library",
+            "com.android.kotlin.multiplatform.library",
         ).forEach { pluginId ->
             pluginManager.withPlugin(pluginId) {
                 hasAndroid = true
