@@ -1,10 +1,7 @@
-.idea/kotlinc.xml
-.idea/deploymentTargetSelector.xml
-.idea/detekt.xml
-.idea/migrations.xml
-.idea/other.xml
-.idea/runConfigurations.xml
-.idea/AndroidProjectSystem.xml
+.idea/*
+!.idea/codeStyles
+!.idea/dictionaries
+!.idea/externalDependencies.xml
 
 # Kotlin
 .kotlin
