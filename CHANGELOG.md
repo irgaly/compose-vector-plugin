@@ -1,3 +1,9 @@
+# v1.1.0 - 2025/07/15 JST
+
+#### Maintenance
+
+* Support Android KMP Library plugin [#55](https://github.com/irgaly/compose-vector-plugin/pull/55)
+
 # v1.0.1 - 2025/01/10 JST
 
 #### Fix
