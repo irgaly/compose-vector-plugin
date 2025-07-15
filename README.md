@@ -21,11 +21,12 @@ plugins {
     id("com.android.application")
     // or Android Library Project
     //id("com.android.library")
+    //id("com.android.kotlin.multiplatform.library")
     // or KMP Project
     //id("org.jetbrains.kotlin.multiplatform")
 
     // Apply Compose Vector Plugin
-    id("io.github.irgaly.compose-vector") version "1.0.1"
+    id("io.github.irgaly.compose-vector") version "1.1.0"
 }
 ...
 ```
@@ -353,7 +354,7 @@ plugins {
 }
 ...
 dependencies {
-    implementation("io.github.irgaly.compose.vector:compose-vector:1.0.1")
+    implementation("io.github.irgaly.compose.vector:compose-vector:1.1.0")
 }
 ```
 
