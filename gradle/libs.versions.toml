@@ -2,7 +2,7 @@
 composeVector = "1.1.0"
 kotlin = "2.2.0"
 gradle-android = "8.13.0"
-kotest = "5.9.0"
+kotest = "6.0.3"
 
 [libraries]
 kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
