@@ -34,6 +34,6 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 android-application = { id = "com.android.application", version.ref = "gradle-android" }
 android-library = { id = "com.android.library", version.ref = "gradle-android" }
 plugin-publish = { id = "com.gradle.plugin-publish", version = "2.0.0" }
-dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
+dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version = "2.0.0" }
 composeVector = { id = "io.github.irgaly.compose-vector", version.ref = "composeVector" }

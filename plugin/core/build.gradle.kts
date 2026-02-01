@@ -1,4 +1,4 @@
-import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.dokka.gradle.tasks.DokkaGeneratePublicationTask
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -27,10 +27,9 @@ java {
     withJavadocJar()
 }
 
-val dokkaJavadoc by tasks.getting(DokkaTask::class)
+val dokkaGeneratePublicationHtml by tasks.getting(DokkaGeneratePublicationTask::class)
 val javadocJar by tasks.getting(Jar::class) {
-    dependsOn(dokkaJavadoc)
-    from(dokkaJavadoc.outputDirectory)
+    from(dokkaGeneratePublicationHtml.outputDirectory)
 }
 
 signing {
