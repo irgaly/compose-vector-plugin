@@ -26,7 +26,7 @@ plugins {
     //id("org.jetbrains.kotlin.multiplatform")
 
     // Apply Compose Vector Plugin
-    id("io.github.irgaly.compose-vector") version "1.1.0"
+    id("io.github.irgaly.compose-vector") version "1.2.0"
 }
 ...
 ```
@@ -354,7 +354,7 @@ plugins {
 }
 ...
 dependencies {
-    implementation("io.github.irgaly.compose.vector:compose-vector:1.1.0")
+    implementation("io.github.irgaly.compose.vector:compose-vector:1.2.0")
 }
 ```
 
