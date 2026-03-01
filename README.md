@@ -17,7 +17,6 @@ Apply this plugin to your KMP project or Android Project.
 ```kotlin
 plugins {
     // For example, Android Application Project
-    id("org.jetbrains.kotlin.android")
     id("com.android.application")
     // or Android Library Project
     //id("com.android.library")
