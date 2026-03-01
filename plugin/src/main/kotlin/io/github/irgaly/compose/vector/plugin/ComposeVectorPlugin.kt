@@ -1,7 +1,7 @@
 package io.github.irgaly.compose.vector.plugin
 
+import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.variant.AndroidComponentsExtension
-import com.android.build.gradle.BaseExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.FileCollection
@@ -36,7 +36,7 @@ class ComposeVectorPlugin : Plugin<Project> {
         target.executeOnFinalize {
             val multiplatformExtension =
                 target.extensions.findByType<KotlinMultiplatformExtension>()
-            val androidExtension = target.extensions.findByType<BaseExtension>()
+            val androidExtension = target.extensions.findByType<CommonExtension>()
             val srcDir = target.files(extension.outputDir).builtBy(task)
             val outputDirPath = extension.outputDir.get().asFile.toPath()
             val insideBuildDir =
@@ -124,7 +124,7 @@ class ComposeVectorPlugin : Plugin<Project> {
         sourceSets.findByName(KotlinSourceSet.COMMON_MAIN_SOURCE_SET_NAME)?.kotlin?.srcDir(srcDir)
     }
 
-    private fun BaseExtension.addMainSourceSet(srcDir: FileCollection) {
+    private fun CommonExtension.addMainSourceSet(srcDir: FileCollection) {
         sourceSets.findByName(SourceSet.MAIN_SOURCE_SET_NAME)?.kotlin?.srcDir(srcDir)
     }
 }
