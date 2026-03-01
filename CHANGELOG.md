@@ -1,3 +1,10 @@
+# v1.2.0 - 2026/03/02 JST
+
+#### Improvement
+
+* Support AGP 9
+    * update AGP 9.0.0 [#77](https://github.com/irgaly/compose-vector-plugin/pull/77)
+
 # v1.1.0 - 2025/07/15 JST
 
 #### Maintenance
