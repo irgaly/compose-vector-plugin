@@ -11,6 +11,17 @@
       "enabled": false
     },
     {
+      "groupName": "Kotlin",
+      "matchPackageNames": [
+        "org.jetbrains.kotlin:*",
+        "org.jetbrains.kotlin.*"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "enabled": true
+    },
+    {
       "matchPackageNames": [
         "io.github.irgaly.compose-vector:io.github.irgaly.compose-vector.gradle.plugin"
       ],
