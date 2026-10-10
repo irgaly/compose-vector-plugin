@@ -13,9 +13,6 @@ android {
     buildFeatures {
         compose = true
     }
-    sourceSets.configureEach {
-        java.srcDirs("src/$name/kotlin")
-    }
 }
 
 kotlin {
