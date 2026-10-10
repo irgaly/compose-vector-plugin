@@ -8,7 +8,7 @@ kotest = "6.2.5"
 kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 android-gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle-android" }
 androidx-lifecycle = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.11.0" }
-compose-bom = { group = "androidx.compose", name = "compose-bom", version = "2026.03.01" }
+compose-bom = { module = "androidx.compose:compose-bom", version = "2026.09.00" }
 compose-activity = { module = "androidx.activity:activity-compose", version = "1.13.0" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
